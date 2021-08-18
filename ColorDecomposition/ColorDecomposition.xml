@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+  <category>SlicerScope</category>
+  <title>ColorDecomposition</title>
+  <description><![CDATA[This is a CLI module that can be bundled in an extension]]></description>
+  <version>0.0.1</version>
+  <documentation-url>https://github.com/username/project</documentation-url>
+  <license>Slicer</license>
+  <contributor>Yi Gao (Shenzhen Univ.) </contributor>
+  <acknowledgements>This work was partially funded by NIH grant NXNNXXNNNNNN-NNXN</acknowledgements>
+  <parameters>
+    <label>IO</label>
+    <description><![CDATA[Input/output parameters]]></description>
+    <image type="vector">
+      <name>inputVolume</name>
+      <label>Input Histopathology Image</label>
+      <channel>input</channel>
+      <index>0</index>
+      <description><![CDATA[Input Histopathology Image]]></description>
+    </image>
+    <image>
+      <name>outputVolume</name>
+      <label>Output Image</label>
+      <channel>output</channel>
+      <index>1</index>
+      <description><![CDATA[Output Image]]></description>
+    </image>
+  </parameters>
+  <parameters>
+    <label>Stain Type Parameters</label>
+    <description><![CDATA[Variations on stain types]]></description>
+    <string-enumeration>
+      <name>stainChoice</name>
+      <channel>input</channel>
+      <flag>e</flag>
+      <longflag>enumeration</longflag>
+      <description><![CDATA[An enumeration of stain types]]></description>
+      <label>Stain Types</label>
+      <default>H-E</default>
+      <element>H-E</element> <!-- The default value above must be exist in the element list. Otherwise Slicer will crash when the module is opened. -->
+      <element>H-E 2</element>
+      <element>H-PAS</element>
+      <element>H-DAB</element>
+      <element>H PAS DAB</element>
+      <element>Fast blue</element>
+      <element>Feulgen Light Green</element>
+      <element>Giemsa</element>
+      <element>FastRed FastBlue DAB</element>
+      <element>Methyl Green DAB</element>
+      <element>H-E DAB</element>
+      <element>H-AEC</element>
+      <element>Azan-Mallory</element>
+      <element>Masson Trichrome</element>
+      <element>Alcian blue-H</element>
+    </string-enumeration>
+    <integer>
+      <name>outputChannel</name>
+      <longflag>outputChannel</longflag>
+      <flag>c</flag>
+      <label>Output Channel Number</label>
+      <description><![CDATA[The number of channel to be output]]></description>
+      <default>1</default>
+      <constraints>
+        <minimum>1</minimum>
+        <maximum>3</maximum>
+        <step>1</step>
+      </constraints>
+    </integer>
+  </parameters>
+  <!-- <string-enumeration> -->
+  <!--   <name>stainType</name> -->
+  <!--   <index>2</index> -->
+  <!--   <description><![CDATA[Pick different type of stains]]></description> -->
+  <!--   <label>Stain type parameter</label> -->
+  <!--   <element>HE</element> -->
+  <!--   <element>PAS</element> -->
+  <!-- </string-enumeration> -->
+</executable>

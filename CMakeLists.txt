@@ -20,6 +20,7 @@ include(${Slicer_USE_FILE})
 #-----------------------------------------------------------------------------
 # Extension modules
 add_subdirectory(SlicerScopeViewer)
+add_subdirectory(ColorDecomposition)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------
