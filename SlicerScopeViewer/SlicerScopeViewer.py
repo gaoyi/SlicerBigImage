@@ -69,7 +69,7 @@ class SlicerScopeViewer(ScriptedLoadableModule):
     self.parent.contributors = ["Yi Gao (Shenzhen Univ.)"]  # TODO: replace with "Firstname Lastname (Organization)"
     # TODO: update with short description of the module and a link to online module documentation
     self.parent.helpText = """
-    BigViewer for viewing large image whose whole content is not able to be loaded into memory.
+    SlicerScopeViewer for viewing large image whose whole content is not able to be loaded into memory.
     """
     self.parent.acknowledgementText = """
     This file was developed by Yi Gao.
@@ -307,7 +307,7 @@ class SlicerScopeViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     #--------------------------------------------------------------------------------
     # Parameters Area
     WSIParametersCollapsibleButton = ctk.ctkCollapsibleButton()
-    WSIParametersCollapsibleButton.text = "BigViewer"
+    WSIParametersCollapsibleButton.text = "SlicerScopeViewer"
     self.layout.addWidget(WSIParametersCollapsibleButton)
 
     # Layout within the dummy collapsible button
@@ -318,7 +318,7 @@ class SlicerScopeViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     # load the volume.
     self.BigRGBAImageFileNameEditor = ctk.ctkPathLineEdit()
     self.BigRGBAImageFileNameEditor.setCurrentPath("")
-    wsiParametersFormLayout.addRow("Select WSI: ", self.BigRGBAImageFileNameEditor)
+    wsiParametersFormLayout.addRow("Select WSI to view: ", self.BigRGBAImageFileNameEditor)
 
     #--------------------------------------------------------------------------------
     # Load BigRGBAImage meta information to update UI
