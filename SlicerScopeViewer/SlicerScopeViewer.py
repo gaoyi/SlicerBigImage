@@ -1565,7 +1565,7 @@ class SlicerScopeViewerTest(ScriptedLoadableModuleTest):
     # Get/create input data
 
     import SampleData
-    registerSampleData()
+    #registerSampleData()
     inputVolume = SampleData.downloadSample('SlicerScopeViewer1')
     self.delayDisplay('Loaded test data set')
 
