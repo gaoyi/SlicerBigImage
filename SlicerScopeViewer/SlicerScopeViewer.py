@@ -183,7 +183,7 @@ class SlicerScopeViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     redView = redWidget.sliceView()
 
     # disable scroller in the Red View
-    redWidget.sliceController().setVisible(False)
+    # redWidget.sliceController().setVisible(False)
 
     interactor = redView.interactorStyle().GetInteractor()
     interactor.AddObserver(vtk.vtkCommand.RightButtonPressEvent, self.onRightButtonPressed)
