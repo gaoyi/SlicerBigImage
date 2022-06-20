@@ -34,6 +34,18 @@ The module in this extension will install the python wrapper of
 openslide through pip. This is done automatically the first time the
 module is run. But you may need to restart Slicer to use it.
 
+## Usage
+
+### Example data
+Example large scale wholse slide image can be downloaded at, e.g., the
+[OpenSlide
+website](https://openslide.cs.cmu.edu/download/openslide-testdata/Aperio/CMU-1.svs
+"Brightfield WSI")
+
+### Large whole slide image viewing
+### Staining decomposition
+### Nucleus segmentation
+
 
 ## Citation
 
