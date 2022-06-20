@@ -34,6 +34,14 @@ The module in this extension will install the python wrapper of
 openslide through pip. This is done automatically the first time the
 module is run. But you may need to restart Slicer to use it.
 
+## Modules
+This extension currently has two modules:
+
+* SlicerScopeViewer: This module loads and views the WSI images.
+* ColorDecomposition: This module performs the color/staining decomposition of the image.
+
+Their detailed usages are listed below. More modules including nucleus segmentaiton and others will be uploaded soon.
+
 ## Usage
 
 ### Example data
