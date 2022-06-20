@@ -26,9 +26,11 @@ except ImportError:
     slicer.util.pip_install("openslide-python")
 
 try:
-    import skimage.transform
+    import skimage
 except ImportError:
     slicer.util.pip_install("scikit-image")
+
+import skimage.transform
 
 
 # try:
