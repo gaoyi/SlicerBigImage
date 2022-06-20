@@ -45,7 +45,7 @@ website](https://openslide.cs.cmu.edu/download/openslide-testdata/Aperio/CMU-1.s
 ### Large whole slide image viewing
 Swith to the "SlicerScopeViewer" module in the SlicerScope category. As shown in the module panel, select the WSI file to view in the "Select WSI" box. Then click "Load WSI" below.
 
-![image](https://user-images.githubusercontent.com/89077084/174545558-4dc2a490-ccb9-4de9-9237-6bc93de731ff.png)
+![image](https://user-images.githubusercontent.com/920557/174559913-77ccaee3-5063-4fa5-b562-dd1ad3b24236.png)
 
 One can then view different region/scale of the image, using mouse dragging and mosue wheeling, as shown below:
 
