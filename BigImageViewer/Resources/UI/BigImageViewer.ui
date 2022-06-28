@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>SlicerScopeViewer</class>
- <widget class="qMRMLWidget" name="SlicerScopeViewer">
+ <class>BigImageViewer</class>
+ <widget class="qMRMLWidget" name="BigImageViewer">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -229,7 +229,7 @@
  <resources/>
  <connections>
   <connection>
-   <sender>SlicerScopeViewer</sender>
+   <sender>BigImageViewer</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>inputSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -245,7 +245,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>SlicerScopeViewer</sender>
+   <sender>BigImageViewer</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>outputSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -261,7 +261,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>SlicerScopeViewer</sender>
+   <sender>BigImageViewer</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>invertedOutputSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>

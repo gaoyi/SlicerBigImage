@@ -9,7 +9,7 @@ set(EXTENSION_CATEGORY "BigImage")
 set(EXTENSION_CONTRIBUTORS "Yi Gao (Shenzhen University)")
 set(EXTENSION_DESCRIPTION "BigImage is the extension hosting 3D Slicer based GB-level microscopic image viewing and computing.")
 set(EXTENSION_ICONURL "https://raw.githubusercontent.com/gaoyi/SlicerBigImage/main/SlicerBigImage.png")
-set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/gaoyi/SlicerScope/main/Screenshots/1.png")
+set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/gaoyi/SlicerBigImage/main/Screenshots/1.png")
 set(EXTENSION_DEPENDS "NA") # Specified as a list or "NA" if no dependencies
 
 #-----------------------------------------------------------------------------

@@ -1,8 +1,8 @@
-# SlicerScope
+# BigImage
 
 ## Introduction
 
-SlicerScope is an extension of 3D Slicer. It is used for large scale
+BigImage is an extension of 3D Slicer. It is used for large scale
 microscopic image viewing and computing.
 
 Computational histopathology is a fast emerging field which converts
@@ -15,14 +15,14 @@ and computation capability, large developer community, flexible plugin
 mechanism, and friendly transnational license, would be extremely
 beneficial for the entire community.
 
-SlicerScope is an open platform for whole slide histopathology image
+BigImage is an open platform for whole slide histopathology image
 computing based on the highly successful 3D Slicer.
 
 In addition to viewing the giga-pixel whole slide image viewing,
 currently, the extension also offers several specific analytical
 modules for qualitative presentation, nucleus level analysis, tissue
 scale computation, and 3D pathology. Thanks to the openess of Slicer,
-the SlicerScope extension could also be further extended by you.
+the BigImage extension could also be further extended by you.
 
 ## Build and Installation
 
@@ -47,7 +47,7 @@ You will need to **manully** install the openslide library to your OS. On Window
 
 Note that OpenSlide winows binary library is built using MingW. And it's okay if you are building Slicer using other compiler (visual studio for example).
 
-You can un-zip the openslide library to your system library directory. Or you can un-zip it to anywhere. In the later case, you will need to add the following lines in the SlicerScopeViewer.py, after the `import skimage.transform` on line 33:
+You can un-zip the openslide library to your system library directory. Or you can un-zip it to anywhere. In the later case, you will need to add the following lines in the BigImageViewer.py, after the `import skimage.transform` on line 33:
 
 ```
 import os
@@ -65,7 +65,7 @@ You may need to restart Slicer after the installation.
 ## Modules
 This extension currently has two modules:
 
-* SlicerScopeViewer: This module loads and views the WSI images.
+* BigImageViewer: This module loads and views the WSI images.
 * ColorDecomposition: This module performs the color/staining decomposition of the image.
 
 Their detailed usages are listed below. More modules including nucleus segmentaiton and others will be uploaded soon.
@@ -79,7 +79,7 @@ website](https://openslide.cs.cmu.edu/download/openslide-testdata/Aperio/CMU-1.s
 "Brightfield WSI")
 
 ### Large whole slide image viewing
-Swith to the "SlicerScopeViewer" module in the SlicerScope category. As shown in the module panel, select the WSI file to view in the "Select WSI" box. Then click "Load WSI" below.
+Swith to the "BigImageViewer" module in the BigImage category. As shown in the module panel, select the WSI file to view in the "Select WSI" box. Then click "Load WSI" below.
 
 ![image](https://user-images.githubusercontent.com/920557/174559913-77ccaee3-5063-4fa5-b562-dd1ad3b24236.png)
 
