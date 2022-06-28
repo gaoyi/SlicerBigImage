@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-set(MODULE_NAME SlicerScopeViewer)
+set(MODULE_NAME BigImageViewer)
 
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
