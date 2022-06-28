@@ -24,43 +24,16 @@ modules for qualitative presentation, nucleus level analysis, tissue
 scale computation, and 3D pathology. Thanks to the openess of Slicer,
 the BigImage extension could also be further extended by you.
 
-## Build and Installation
+## Installation
+
+On Windows, all required dependencies are automatically installed. On Linux and macOS OpenSlide must be installed manually as described below.
 
 ### Linux
 
-You will need to **manully** install the openslide library to your OS. This can be done with, e.g., 
+You will need to **manually** install the openslide library to your OS. This can be done with, e.g.,
 ```
 sudo apt install libopenslide0
 ```
-
-This extension also need the following python modules (but they will be installed automatically):
-* scikit-image 
-* openslide-python
-
-These modules, if not installed in your Slicer already, will be automatically installed for the first time the extension is run.
-
-You may need to restart Slicer after the installation.
-
-### Windows
-
-You will need to **manully** install the openslide library to your OS. On Windows, download the pre-built binary library from [OpenSlide download site](https://openslide.org/download/) under the "Windows Binary" section. Pick the latest release (the 2017-11-22 one as of 20220628).
-
-Note that OpenSlide winows binary library is built using MingW. And it's okay if you are building Slicer using other compiler (visual studio for example).
-
-You can un-zip the openslide library to your system library directory. Or you can un-zip it to anywhere. In the later case, you will need to add the following lines in the BigImageViewer.py, after the `import skimage.transform` on line 33:
-
-```
-import os
-os.add_dll_directory("path-to-openslide/openslide-win64-20171122/bin")
-```
-
-This extension also need the following python modules (but they will be installed automatically):
-* scikit-image 
-* openslide-python
-
-These modules, if not installed in your Slicer already, will be automatically installed for the first time the extension is run.
-
-You may need to restart Slicer after the installation.
 
 ## Modules
 This extension currently has two modules:
@@ -109,5 +82,3 @@ If the eosin chanel is wanted, one can switch the output chanel in the module pa
 If you find this extension helpful please cite this paper:
 
 Xiaxia Yu, Bingshuai Zhao, Haofan Huang, Mu Tian, Sai Zhang, Hongping Song, Zengshan Li, Kun Huang, Yi Gao, "An Open Source Platform for Computational Histopathology," in IEEE Access, vol. 9, pp. 73651-73661, 2021, doi: 10.1109/ACCESS.2021.3080429.
-
-
