@@ -24,15 +24,43 @@ modules for qualitative presentation, nucleus level analysis, tissue
 scale computation, and 3D pathology. Thanks to the openess of Slicer,
 the SlicerScope extension could also be further extended by you.
 
-## Build
-The module also needs the openslide library to be installed on your
-computer. Under linux (apt system), this could be done by simply running:
+## Build and Installation
 
-sudo apt install libopenslide
+### Linux
 
-The module in this extension will install the python wrapper of
-openslide through pip. This is done automatically the first time the
-module is run. But you may need to restart Slicer to use it.
+You will need to **manully** install the openslide library to your OS. This can be done with, e.g., 
+```
+sudo apt install libopenslide0
+```
+
+This extension also need the following python modules (but they will be installed automatically):
+* scikit-image 
+* openslide-python
+
+These modules, if not installed in your Slicer already, will be automatically installed for the first time the extension is run.
+
+You may need to restart Slicer after the installation.
+
+### Windows
+
+You will need to **manully** install the openslide library to your OS. On Windows, download the pre-built binary library from [OpenSlide download site](https://openslide.org/download/) under the "Windows Binary" section. Pick the latest release (the 2017-11-22 one as of 20220628).
+
+Note that OpenSlide winows binary library is built using MingW. And it's okay if you are building Slicer using other compiler (visual studio for example).
+
+You can un-zip the openslide library to your system library directory. Or you can un-zip it to anywhere. In the later case, you will need to add the following lines in the SlicerScopeViewer.py, after the `import skimage.transform` on line 33:
+
+```
+import os
+os.add_dll_directory("path-to-openslide/openslide-win64-20171122/bin")
+```
+
+This extension also need the following python modules (but they will be installed automatically):
+* scikit-image 
+* openslide-python
+
+These modules, if not installed in your Slicer already, will be automatically installed for the first time the extension is run.
+
+You may need to restart Slicer after the installation.
 
 ## Modules
 This extension currently has two modules:
