@@ -264,7 +264,6 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       openSlidePath = self.logic.getOpenSlidePath()
       self.ui.OpenSlidePathLineEdit.currentPath = openSlidePath
     else:
-      self.ui.OpenSlidePathLineLabel.hide()
       self.ui.OpenSlidePathLineEdit.hide()
       # There are no other advanced settings for now, so hide the whole section
       self.ui.advancedCollapsibleButton.hide()
