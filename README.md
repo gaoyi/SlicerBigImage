@@ -76,6 +76,13 @@ where the dark regions corresponding to the high hematoxylin content.
 If the eosin chanel is wanted, one can switch the output chanel in the module panel to the 2nd chanel, and the result will be like:
 ![image](https://user-images.githubusercontent.com/920557/174556464-e4e1d6d0-f1c3-4222-ad68-f490a520ae98.png)
 
+### Zarr image reading/writing
+
+The extension contains an experimental module ([NgffImageIO](https://github.com/gaoyi/SlicerBigImage/blob/main/NgffImageIO/NgffImageIO.py))
+for reading [OME-NGFF](https://ngff.openmicroscopy.org/latest/) file format. Currently, only a simple image array can be saved and loaded
+in Zarr format (with the `.zarr` file extension, with `ZipStorage` class), but we do not follow the NGFF specification yet.
+
+This module may be used in the future instead of OpenSlide to make dependencies simpler, and to store more complete metadata.
 
 ## Citation
 
