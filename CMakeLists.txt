@@ -22,6 +22,7 @@ include(${Slicer_USE_FILE})
 add_subdirectory(BigImageViewer)
 add_subdirectory(ColorDecomposition)
 add_subdirectory(NgffImageIO)
+add_subdirectory(NucleusSegmentation)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------
