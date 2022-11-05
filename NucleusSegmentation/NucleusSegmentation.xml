@@ -1,37 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <executable>
-  <category>Examples</category>
+  <category>BigImage</category>
   <title>NucleusSegmentation</title>
   <description><![CDATA[This is a CLI module that can be bundled in an extension]]></description>
   <version>0.0.1</version>
-  <documentation-url>https://github.com/username/project</documentation-url>
+  <documentation-url>https://slicerscope.github.io</documentation-url>
   <license>Slicer</license>
-  <contributor>FirstName LastName (Institution), FirstName LastName (Institution)</contributor>
-  <acknowledgements>This work was partially funded by NIH grant NXNNXXNNNNNN-NNXN</acknowledgements>
+  <contributor>Yi Gao (Shenzhen University)</contributor>
+  <acknowledgements></acknowledgements>
   <parameters>
     <label>IO</label>
     <description><![CDATA[Input/output parameters]]></description>
     <double>
-      <name>sigma</name>
-      <longflag>sigma</longflag>
-      <flag>s</flag>
-      <label>Sigma</label>
+      <name>threshold</name>
+      <longflag>threshold</longflag>
+      <flag>t</flag>
+      <label>threshold</label>
       <description><![CDATA[A double value (in units of mm) passed to the algorithm]]></description>
-      <default>1.0</default>
+      <default>75.0</default>
     </double>
-    <image>
-      <name>inputVolume</name>
-      <label>Input Volume</label>
+    <double>
+      <name>mpp</name>
+      <longflag>mpp</longflag>
+      <flag>m</flag>
+      <label>mpp</label>
+      <description><![CDATA[micron per pixel]]></description>
+      <default>0.25</default>
+    </double>
+    <image type="vector">
+      <name>inputfileName</name>
+      <label>Input HE RGB Image</label>
       <channel>input</channel>
       <index>0</index>
-      <description><![CDATA[Input volume]]></description>
+      <description><![CDATA[Input image]]></description>
     </image>
-    <image>
-      <name>outputVolume</name>
-      <label>Output Volume</label>
+    <image type="scalar">
+      <name>outputHImage</name>
+      <label>Output H-channel Image</label>
       <channel>output</channel>
       <index>1</index>
-      <description><![CDATA[Output Volume]]></description>
+      <description><![CDATA[Ouptut H image]]></description>
+    </image>
+    <image type="scalar">
+      <name>outputEImage</name>
+      <label>Output E-channel Image</label>
+      <channel>output</channel>
+      <index>2</index>
+      <description><![CDATA[Output E image]]></description>
+    </image>
+    <image type="label">
+      <name>outputImageName</name>
+      <label>Output Segmentation Image</label>
+      <channel>output</channel>
+      <index>3</index>
+      <description><![CDATA[Output Image]]></description>
     </image>
   </parameters>
 </executable>
