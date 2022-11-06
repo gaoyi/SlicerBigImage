@@ -142,6 +142,9 @@
         <property name="toolTip">
          <string>Load the H5 Image</string>
         </property>
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>Load H5 File</string>
         </property>
