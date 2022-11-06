@@ -952,15 +952,42 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     return
 
   def onSegmentNucleiButton(self):
-    self.logic.installPreRequisites()
-    self.logic.processSegmentNuclei(self.patchVolumeNode, self.patchGrayVolumeNode, self.kerasModelSegmentNuclei)
+    #self.logic.installPreRequisites()
+
+    nucleusLabelImageNode = slicer.vtkMRMLLabelMapVolumeNode()
+    nucleusLabelImageNode.SetName("nucleusLabelImage")
+    slicer.mrmlScene.AddNode( nucleusLabelImageNode )
+    #parameters['outputAxisMaskVolume'] =
 
     volumeNode = slicer.util.getNode('currentPatchGrayChannel')
-    slicer.util.setSliceViewerLayers(foreground=volumeNode)
+    #slicer.util.setSliceViewerLayers(foreground=volumeNode)
+
+    parameters = {}
+    parameters['inputfileName'] = self.patchVolumeNode.GetID()
+    parameters['outputEImage'] = volumeNode.GetID()
+    parameters['outputHImage'] = volumeNode.GetID()
+    parameters['outputImageName'] = nucleusLabelImageNode.GetID()
+    parameters['mpp'] = 0.5/20.0*float(self.ui.ObjectiveMagnificationSlicerWidget.value) # hack: assume mpp=0.5 at 20x
+    slicer.cli.run( slicer.modules.nucleussegmentation, None, parameters, wait_for_completion=True )
+
+    # volumeNode = slicer.util.getNode('currentPatchGrayChannel') #self.patchGrayVolumeNode
+    # slicer.util.setSliceViewerLayers(foreground=volumeNode)
+    # volumeNode1 = slicer.util.getNode('currentPatchFromBigRGBAImage') #self.patchVolumeNode
+    # slicer.util.setSliceViewerLayers(background = volumeNode1)
+
+    # slicer.util.setSliceViewerLayers(foregroundOpacity=0.4)
+
+
+    # self.logic.processSegmentNuclei(self.patchVolumeNode, nucleusLabelImageNode.GetID())
+
+
+    # volumeNode = slicer.util.getNode('currentPatchGrayChannel')
+    # slicer.util.setSliceViewerLayers(foreground=volumeNode)
     volumeNode1 = slicer.util.getNode('currentPatchFromBigRGBAImage')
     slicer.util.setSliceViewerLayers(background = volumeNode1)
+    #nucleusLabelImageNode
 
-    slicer.util.setSliceViewerLayers(foregroundOpacity=0.4)
+    # slicer.util.setSliceViewerLayers(foregroundOpacity=0.4)
 
   def onLoadH5FileButton(self):
     if not self.patchVolumeNode:
@@ -1227,59 +1254,6 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
     return outputSegBatchArray
 
 
-  def segment2DRGBImageRandomSampleDividePrior(self, model, imageArray, patchSideLen = 64, numPatchSampleFactor = 10, batch_size = 1, num_segmetnation_classes = 3):
-#def segment2DRGBImageRandomSampleDividePrior(model, imageArray, patchSideLen = 64, numPatchSampleFactor = 10, batch_size = 1, num_segmetnation_classes = 3):
-    sz = imageArray.shape
-    numChannel = 3 # for RGB
-
-    #assert(sz[0] >= patchSideLen and sz[1] >= patchSideLen and sz[2] == 3),"Image shape must be >= " + str(patchSideLen) + "-cubed."
-    if sz[2] != numChannel:
-        print("Only process RGB image")
-        exit(-1)
-
-    # the number of random patches is s.t. on average, each pixel is
-    # sampled numPatchSampleFactor times. Default is 10
-    numPatchSample = math.ceil((sz[0]/patchSideLen)*(sz[1]/patchSideLen)*numPatchSampleFactor)
-
-
-    # this saves the segmentation result
-    segArray = numpy.zeros((sz[0], sz[1], num_segmetnation_classes), dtype=numpy.float32)
-    priorImage = numpy.zeros((sz[0], sz[1]), dtype=numpy.float32)
-
-    patchShape = (patchSideLen, patchSideLen, numChannel)
-    imagePatchBatch = numpy.zeros((batch_size, patchShape[0], patchShape[1], numChannel), dtype=numpy.float32)
-
-    for itPatch in range(0, numPatchSample, batch_size):
-
-        allPatchTopLeftX = numpy.random.randint(0, sz[0] - patchShape[0], size = batch_size)
-        allPatchTopLeftY = numpy.random.randint(0, sz[1] - patchShape[1], size = batch_size)
-
-        for itBatch in range(batch_size):
-            thisTopLeftX = allPatchTopLeftX[itBatch]
-            thisTopLeftY = allPatchTopLeftY[itBatch]
-
-            imagePatchBatch[itBatch, :, :, :] = imageArray[thisTopLeftX:(thisTopLeftX + patchShape[0]), thisTopLeftY:(thisTopLeftY + patchShape[1]), :]
-
-        segBatch = self.segment2DRGBPatchBatch(model, imagePatchBatch)
-
-        for itBatch in range(batch_size):
-            thisTopLeftX = allPatchTopLeftX[itBatch]
-            thisTopLeftY = allPatchTopLeftY[itBatch]
-
-            segArray[thisTopLeftX:(thisTopLeftX + patchShape[0]), thisTopLeftY:(thisTopLeftY + patchShape[1]), :] += segBatch[itBatch, :, :, :]
-            priorImage[thisTopLeftX:(thisTopLeftX + patchShape[0]), thisTopLeftY:(thisTopLeftY + patchShape[1])] += numpy.ones((patchShape[0], patchShape[1]))
-
-    for it in range(num_segmetnation_classes):
-        segArray[:, :, it] /= (priorImage + numpy.finfo(numpy.float32).eps)
-        segArray[:, :, it] *= 100
-
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # segArray contains multiple channels of output. The 1-st is the
-    # corresponding output for the 1st object.
-    outputSegArrayOfObject1 = segArray[:, :, 1]
-
-    return outputSegArrayOfObject1
-
   def processSegmentGland(self, inputVolume, outputVolume, kerasModel):
     """
     Run the processing algorithm.
@@ -1322,7 +1296,7 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
 
 
 
-  def processSegmentNuclei(self, inputVolume, outputVolume, kerasModel):
+  def processSegmentNuclei(self, inputVolume, outputVolume):
     """
     Run the processing algorithm.
     Can be used without GUI widget.
