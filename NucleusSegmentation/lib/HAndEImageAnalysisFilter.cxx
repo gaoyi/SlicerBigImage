@@ -34,7 +34,7 @@
 #include "HAndEImageAnalysisFilter.h"
 #include "../include/SFLSLocalChanVeseSegmentor2D.h"
 
-#include "FastGrowCutSegmenter2D.h"
+//#include "FastGrowCutSegmenter2D.h"
 #include "HematoxylinImageSegmentationFilter.h"
 
 // for debug

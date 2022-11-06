@@ -39,7 +39,6 @@ set(MODULE_SRCS
     ${PROJECT_SOURCE_DIR}/NucleusSegmentation/lib/HAndEImageAnalysisFilter.cxx
     ${PROJECT_SOURCE_DIR}/NucleusSegmentation/lib/HematoxylinImageSegmentationFilter.cxx
     ${PROJECT_SOURCE_DIR}/NucleusSegmentation/lib/utilitiesImage.cxx
-    ${PROJECT_SOURCE_DIR}/NucleusSegmentation/lib/fibheap.cpp
 )
 
 set(MODULE_TARGET_LIBRARIES
