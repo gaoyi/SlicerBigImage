@@ -70,11 +70,6 @@ namespace gth818n
         m_labelOfPoints[i] = static_cast<long>(sublabel[neighbors[0]]);
       }
 
-
-
-
-
-
     m_allDone = true;
 
     return;

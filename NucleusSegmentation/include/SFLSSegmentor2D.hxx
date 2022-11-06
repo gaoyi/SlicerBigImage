@@ -162,7 +162,7 @@ CSFLSSegmentor2D< TPixel >::getSegmentationMask(typename LSImageType::PixelType 
 template< typename TPixel >
 bool
 CSFLSSegmentor2D< TPixel >
-::getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(long ix, long iy, long iz, double& thePhi)
+::getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(long ix, long iy, double& thePhi)
 {
   /*--------------------------------------------------
    *
@@ -412,12 +412,11 @@ CSFLSSegmentor2D< TPixel >
     {
       long ix = (*itn1)[0];
       long iy = (*itn1)[1];
-      long iz = 0;
 
       typename ImageType::IndexType idx = {{ix, iy}};
 
       double thePhi;
-      bool found = getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(ix, iy, iz, thePhi);
+      bool found = getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(ix, iy, thePhi);
 
       if (found)
         {
@@ -465,12 +464,11 @@ CSFLSSegmentor2D< TPixel >
     {
       long ix = (*itp1)[0];
       long iy = (*itp1)[1];
-      long iz = 0;
 
       typename ImageType::IndexType idx = {{ix, iy}};
-      
+
       double thePhi;
-      bool found = getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(ix, iy, iz, thePhi);
+      bool found = getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(ix, iy, thePhi);
 
       if (found)
         {
@@ -519,12 +517,11 @@ CSFLSSegmentor2D< TPixel >
     {
       long ix = (*itn2)[0];
       long iy = (*itn2)[1];
-      long iz = 0;
 
       typename ImageType::IndexType idx = {{ix, iy}};
 
       double thePhi;
-      bool found = getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(ix, iy, iz, thePhi);
+      bool found = getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(ix, iy, thePhi);
 
       if (found)
         {
@@ -568,13 +565,11 @@ CSFLSSegmentor2D< TPixel >
     {
       long ix = (*itp2)[0];
       long iy = (*itp2)[1];
-      long iz = 0;
 
       typename ImageType::IndexType idx = {{ix, iy}};
 
-
       double thePhi;
-      bool found = getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(ix, iy, iz, thePhi);
+      bool found = getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(ix, iy, thePhi);
 
       if (found)
         {

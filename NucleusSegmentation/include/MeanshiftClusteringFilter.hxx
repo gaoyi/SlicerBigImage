@@ -3,7 +3,6 @@
 
 #include "itkNumericTraits.h"
 
-
 #include "MeanshiftClusteringFilter.h"
 
 
@@ -91,31 +90,6 @@ namespace gth818n
     m_treeGenerator->Update();
 
     m_tree = m_treeGenerator->GetOutput();
-
-    // VectorType queryPoint;
-    // queryPoint[0] = 10.0;
-    // queryPoint[1] = 7.0;
-
-    // // K-Neighbor search
-    // std::cout << "K-Neighbor search:" << std::endl;
-    // unsigned int numberOfNeighbors = 3;
-    // typename TreeType::InstanceIdentifierVectorType neighbors;
-    // m_tree->Search( queryPoint, numberOfNeighbors, neighbors ) ;
-
-    // for ( unsigned int i = 0 ; i < neighbors.size() ; ++i )
-    //   {
-    //     std::cout << m_tree->GetMeasurementVector( neighbors[i] ) << std::endl;
-    //   }
-
-    // // Radius search
-    // std::cout << "Radius search:" << std::endl;
-    // double radius = 4.0;
-    // m_tree->Search( queryPoint, radius, neighbors ) ;
-    // std::cout << "There are " << neighbors.size() << " neighbors." << std::endl;
-    // for ( unsigned int i = 0 ; i < neighbors.size() ; ++i )
-    //   {
-    //     std::cout << m_tree->GetMeasurementVector( neighbors[i] ) << std::endl;
-    //   }
 
     return;
   }

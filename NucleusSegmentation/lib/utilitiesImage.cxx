@@ -28,8 +28,6 @@
 
 #include "utilitiesImage.h"
 
-//#include "Image/gth818nImage.h"
-
 
 namespace gth818n
 {
@@ -269,10 +267,6 @@ namespace gth818n
     return smoothing->GetOutput();
   }
 
-
-
-
-
   itkUIntImage2DType::Pointer binaryImageToConnectedComponentLabelImage(itkShortImage2DType::Pointer bwImage)
   {
     typedef itk::ConnectedComponentImageFilter <itkShortImage2DType, itkUIntImage2DType > ConnectedComponentImageFilterType;
@@ -368,177 +362,6 @@ namespace gth818n
 
     return mask;
   }
-   // {
-  //   // typedef itk::CastImageFilter< itkUIntImage2DType, itkFloatImage2DType > CastFilterType;
-  //   // CastFilterType::Pointer castFilter = CastFilterType::New();
-  //   // castFilter->SetInput(labelImage);
-  //   // castFilter->Update();
-
-  //   typedef itk::LaplacianRecursiveGaussianImageFilter<itkUIntImage2DType, itkFloatImage2DType >  filterType;
-  //   filterType::Pointer laplacianFilter = filterType::New();
-  //   laplacianFilter->SetInput( labelImage );
-  //   laplacianFilter->Update();
-
-  //   writeImage<itkFloatImage2DType>(laplacianFilter->GetOutput(), "laplacianFilter.nrrd", true);
-
-
-  //   // typedef itk::ZeroCrossingBasedEdgeDetectionImageFilter<itkUIntImage2DType, itkFloatImage2DType >  FilterType;
-
-  //   // // Create and setup a derivative filter
-  //   // FilterType::Pointer edgeDetector = FilterType::New();
-  //   // edgeDetector->SetInput( reader->GetOutput() );
-  //   // FilterType::ArrayType variance;
-  //   // variance.Fill(1);
-  //   // edgeDetector->SetVariance(variance);
-
-
-  //   typedef itk::ZeroCrossingImageFilter<itkFloatImage2DType, itkUCharImage2DType >  ZeroCrossingFilterType;
-  //   ZeroCrossingFilterType::Pointer zeroCrossingFilter = ZeroCrossingFilterType::New();
-  //   zeroCrossingFilter->SetInput(laplacianFilter->GetOutput());
-  //   zeroCrossingFilter->SetBackgroundValue(0);
-  //   zeroCrossingFilter->SetForegroundValue(1);
-  //   zeroCrossingFilter->Update();
-
-  //   return zeroCrossingFilter->GetOutput();
-  // }
-
-
-  itkUCharImage2DType::Pointer localMinimaMaskFilter(itkFloatImage2DType::Pointer img)
-  {
-    itkUCharImage2DType::Pointer mask = itkUCharImage2DType::New();
-    mask->SetRegions(img->GetLargestPossibleRegion() );
-    mask->Allocate();
-    mask->FillBuffer(0);
-
-    long nx = img->GetLargestPossibleRegion().GetSize()[0];
-    long ny = img->GetLargestPossibleRegion().GetSize()[1];
-
-    itkUCharImage2DType::OffsetType os0;
-    os0[0] = -1;
-    os0[1] = -1;
-
-    itkUCharImage2DType::OffsetType os1;
-    os1[0] = -1;
-    os1[1] = 0;
-
-    itkUCharImage2DType::OffsetType os2;
-    os2[0] = -1;
-    os2[1] = 1;
-
-    itkUCharImage2DType::OffsetType os3;
-    os3[0] = 0;
-    os3[1] = -1;
-
-    itkUCharImage2DType::OffsetType os4;
-    os4[0] = 0;
-    os4[1] = 1;
-
-    itkUCharImage2DType::OffsetType os5;
-    os5[0] = 1;
-    os5[1] = -1;
-
-    itkUCharImage2DType::OffsetType os6;
-    os6[0] = 1;
-    os6[1] = 0;
-
-    itkUCharImage2DType::OffsetType os7;
-    os7[0] = 1;
-    os7[1] = 1;
-
-    //#pragma omp parallel
-    {
-      itkUCharImage2DType::IndexType idx;
-      //itkUCharImage2DType::IndexType idxNbhd;
-
-      itkFloatImage2DType::PixelType centerValue;
-
-      //#pragma omp for
-      for (long iy = 1; iy < ny-1; ++iy)
-        {
-          idx[1] = iy;
-          for (long ix = 1; ix < nx-1; ++ix)
-            {
-              idx[0] = ix;
-
-              //std::cout<<idx<<std::endl<<std::flush;
-
-              centerValue = img->GetPixel(idx);
-
-              if (centerValue < img->GetPixel(idx + os0) && centerValue < img->GetPixel(idx + os1) && centerValue < img->GetPixel(idx + os2) \
-                  && centerValue < img->GetPixel(idx + os3) && centerValue < img->GetPixel(idx + os4) \
-                  && centerValue < img->GetPixel(idx + os5) && centerValue < img->GetPixel(idx + os6) && centerValue < img->GetPixel(idx + os7))
-                {
-                  mask->SetPixel(idx, 1);
-                }
-              else
-                {
-                  mask->SetPixel(idx, 0);
-                }
-
-
-            //   char isMimimum = 1;
-
-            //   for (char iiy = -1; iiy <= 1; ++iiy)
-            //     {
-            //       idxNbhd[1] = iy + iiy;
-            //       for (char iix = -1; iix <= 1; ++iix)
-            //         {
-            //           if (iix == 0 && iiy == 0)
-            //             {
-            //               continue;
-            //             }
-
-            //           idxNbhd[0] = ix + iix;
-
-            //           if (centerValue >= img->GetPixel(idxNbhd))
-            //             {
-            //               goto mylabel;
-            //             }
-
-            //         }
-            //     }
-
-            //   mask->SetPixel(idx, 1);
-
-            // mylabel:;
-            }
-        }
-    }
-
-    return mask;
-  }
-  // {
-  //   typedef itk::ValuedRegionalMinimaImageFilter<itkFloatImage2DType, itkFloatImage2DType > ValuedRegionalMinimaImageFilterType;
-  //   ValuedRegionalMinimaImageFilterType::Pointer minFilter = ValuedRegionalMinimaImageFilterType::New ();
-  //   minFilter->SetFullyConnected(true);
-  //   minFilter->SetInput(img);
-  //   minFilter->Update();
-
-  //   typedef itk::SubtractImageFilter <itkFloatImage2DType, itkFloatImage2DType > SubtractImageFilterType;
-  //   SubtractImageFilterType::Pointer subtractFilter = SubtractImageFilterType::New ();
-  //   subtractFilter->SetInput1(minFilter->GetOutput());
-  //   subtractFilter->SetInput2(img);
-  //   subtractFilter->Update();
-  //   itkFloatImage2DType::Pointer diff = subtractFilter->GetOutput();
-
-  //   itkUCharImage2DType::Pointer mask = itkUCharImage2DType::New();
-  //   mask->SetRegions(img->GetLargestPossibleRegion() );
-  //   mask->Allocate();
-  //   mask->FillBuffer(0);
-
-  //   itkFloatImage2DType::PixelType* diffBufferPointer = diff->GetBufferPointer();
-  //   itkUCharImage2DType::PixelType* maskBufferPointer = mask->GetBufferPointer();
-
-  //   long numPixels = img->GetLargestPossibleRegion().GetNumberOfPixels();
-
-  //   for (long it = 0; it < numPixels; ++it)
-  //     {
-  //       maskBufferPointer[it] = diffBufferPointer[it]<1?1:0;
-  //     }
-
-  //   return mask;
-  // }
-
 
   itkFloatImage2DType::Pointer GaussianSmoothing(itkFloatImage2DType::Pointer img, float variance)
   {
@@ -562,63 +385,5 @@ namespace gth818n
 
     return filler->GetOutput();
   }
-
-
-
-  // itkUIntImage2DType::Pointer scSeg(itkFloatImage2DType::Pointer image, itkUIntImage2DType::Pointer seedImage)
-  // {
-  //   if (image->GetLargestPossibleRegion() != seedImage->GetLargestPossibleRegion() )
-  //     {
-  //       std::cerr<<"Error: size not match.\n";
-  //       abort();
-  //     }
-
-  //   std::vector<long> imSize(2);
-  //   imSize[0] = image->GetLargestPossibleRegion().GetSize()[0];
-  //   imSize[1] = image->GetLargestPossibleRegion().GetSize()[1];
-
-  //   long numPixels = image->GetLargestPossibleRegion().GetNumberOfPixels();
-
-  //   std::vector<itkFloatImage2DType::PixelType> m_imSrcVec(numPixels);
-  //   std::vector<itkUIntImage2DType::PixelType> m_imSeedVec(numPixels);
-
-  //   itkFloatImage2DType::PixelType* imageBufferPointer = image->GetBufferPointer();
-  //   itkUIntImage2DType::PixelType* seedImageBufferPointer = seedImage->GetBufferPointer();
-
-  //   for (long it = 0; it < numPixels; ++it)
-  //     {
-  //       m_imSrcVec[it] = imageBufferPointer[it];
-  //       m_imSeedVec[it] = seedImageBufferPointer[it];
-  //     }
-
-  //   FGC::FastGrowCut<itkFloatImage2DType::PixelType, itkUIntImage2DType::PixelType> *m_fastGC = new FGC::FastGrowCut<itkFloatImage2DType::PixelType, itkUIntImage2DType::PixelType>();
-  //   m_fastGC->SetSourceImage(m_imSrcVec);
-  //   m_fastGC->SetSeedlImage(m_imSeedVec);
-  //   m_fastGC->SetImageSize(imSize);
-  //   m_fastGC->SetWorkMode(false);
-
-  //   // Do Segmentation
-  //   m_fastGC->DoSegmentation();
-
-  //   std::vector<itkUIntImage2DType::PixelType> m_imLabVec(numPixels); ///< to store the output
-  //   m_fastGC->GetLabeImage(m_imLabVec);
-
-
-  //   itkUIntImage2DType::Pointer labelImage = itkUIntImage2DType::New();
-  //   labelImage->SetRegions(image->GetLargestPossibleRegion() );
-  //   labelImage->Allocate();
-  //   labelImage->FillBuffer(0);
-
-  //   itkUIntImage2DType::PixelType* labelImageBufferPointer = labelImage->GetBufferPointer();
-
-  //   for (long it = 0; it < numPixels; ++it)
-  //     {
-  //       labelImageBufferPointer[it] = m_imLabVec[it];
-  //     }
-
-  //   return labelImage;
-  // }
-
-
 
 }// namespace

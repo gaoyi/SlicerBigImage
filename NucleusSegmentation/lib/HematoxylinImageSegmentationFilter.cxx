@@ -1,18 +1,10 @@
 // itk
 #include "itkImage.h"
-#include "itkWatershedImageFilter.h"
-#include "itkGradientMagnitudeImageFilter.h"
 
 // local
-// #include "itkTypedefs.h"
 #include "utilitiesImage.h"
-
 #include "HematoxylinImageSegmentationFilter.h"
-
-#include "../include/SFLSLocalChanVeseSegmentor2D.h"
-
-#include "itkMinimumMaximumImageCalculator.h"
-
+#include "SFLSLocalChanVeseSegmentor2D.h"
 #include "BinaryMaskAnalysisFilter.h"
 
 
@@ -29,7 +21,6 @@ namespace gth818n
     return;
   }
 
-
   void HematoxylinImageSegmentationFilter::update()
   {
     _segmentHematoxylinImage();
@@ -41,9 +32,6 @@ namespace gth818n
 
   void HematoxylinImageSegmentationFilter::_segmentHematoxylinImage()
   {
-
-    //_segmentHematoxylinImage_otsu();
-
     _segmentHematoxylinImage_otsu_ChanVese_removeSmallIsland();
 
     return;
@@ -59,64 +47,6 @@ namespace gth818n
       {
         std::cerr<<"Error: mpp should be > 0. But got "<<mpp<<std::endl;
       }
-
-    return;
-  }
-
-  void HematoxylinImageSegmentationFilter::_segmentHematoxylinImage_otsu()
-  {
-
-    // int numberOfIteration = 10;
-    // double conductanceParameter = 0.5;
-    // itkFloatImage2DType::Pointer image = PeronaMalikDiffusion(castItkImage<itkUCharImage2DType, itkFloatImage2DType>(m_hematoxylinImage), numberOfIteration, conductanceParameter);
-
-    // // typedef itk::GradientRecursiveGaussianImageFilter<itkFloatImage2DType, itkFloatImage2DType> GradientRecursiveGaussianImageFilterType;
-    // // GradientRecursiveGaussianImageFilterType::Pointer gradfilter = GradientRecursiveGaussianImageFilterType::New();
-    // // //sigma is specified in millimeters
-    // // gradfilter->SetSigma( 1.5 );
-
-    // {
-    //   typedef itk::GradientMagnitudeImageFilter<itkFloatImage2DType, itkFloatImage2DType >  GradientMagnitudeImageFilterType;
-    //   GradientMagnitudeImageFilterType::Pointer gradientMagnitudeImageFilter = GradientMagnitudeImageFilterType::New();
-    //   gradientMagnitudeImageFilter->SetInput(image);
-    //   gradientMagnitudeImageFilter->Update();
-    //   image = gradientMagnitudeImageFilter->GetOutput();
-    // }
-
-    // double threshold = 0.00;
-    // double level = 0.2;
-
-    // itkUIntImage2DType::Pointer waterShedResults;
-    // {
-    //   typedef itk::WatershedImageFilter<itkFloatImage2DType> WatershedFilterType;
-    //   WatershedFilterType::Pointer watershed = WatershedFilterType::New();
-    //   watershed->SetThreshold(threshold);
-    //   watershed->SetLevel(level);
-    //   watershed->SetInput(image);
-    //   watershed->Update();
-    //   waterShedResults = castItkImage<itkULongImageType, itkUIntImage2DType>(watershed->GetOutput());
-    // }
-
-    // m_nucleusBinaryMask = gth818n::edgesOfDifferentLabelRegion(waterShedResults);
-    // itkUCharImage2DType::PixelType* m_nucleusBinaryMaskBufferPointer = m_nucleusBinaryMask->GetBufferPointer();
-
-    // itkShortImage2DType::PixelType* maskBufferPointer = mask->GetBufferPointer();
-
-    // for (long it = 0; it < mask->GetLargestPossibleRegion().GetNumberOfPixels(); ++it )
-    //   {
-    //     if (maskBufferPointer[it] == 1 && m_nucleusBinaryMaskBufferPointer[it] != 0)
-    //       {
-    //         m_nucleusBinaryMaskBufferPointer[it] = 1;
-    //       }
-    //     else
-    //       {
-    //         m_nucleusBinaryMaskBufferPointer[it] = 0;
-    //       }
-    //   }
-
-
-    m_nucleusBinaryMask = otsuThresholdImageT<itkUCharImage2DType, itkUCharImage2DType>(m_hematoxylinImage);
-    m_nucleusBinaryMask = fillHole(m_nucleusBinaryMask);
 
     return;
   }
@@ -176,17 +106,9 @@ namespace gth818n
     binaryMaskAnalyzer.setMPP(m_mpp);
     binaryMaskAnalyzer.update();
 
-    // //gth818n::writeImage<gth818n::BinaryMaskAnalysisFilter::itkFloatImage2DType>(binaryMaskAnalyzer.getSizeColoredImage(), "color.nrrd" );
-    // gth818n::writeImage<gth818n::BinaryMaskAnalysisFilter::itkFloatImage2DType>(binaryMaskAnalyzer.getFeatureColoredImage(2), "ratio1.nrrd" );
-    // //gth818n::writeImage<gth818n::BinaryMaskAnalysisFilter::itkFloatImage2DType>(binaryMaskAnalyzer.getFeatureColoredImage(1), "color1.nrrd" );
-    //gth818n::writeImage<gth818n::BinaryMaskAnalysisFilter::itkIntImage2DType>(binaryMaskAnalyzer.getConnectedComponentLabelImage(), outputImageName.c_str() );
-
     itkUIntImage2DType::Pointer sizeLabel = binaryMaskAnalyzer.getConnectedComponentLabelImage();
     itkUCharImage2DType::Pointer edgeBetweenLabelsMask = edgesOfDifferentLabelRegion(gth818n::castItkImage<itkUIntImage2DType, itkUIntImage2DType>(binaryMaskAnalyzer.getConnectedComponentLabelImage()));
     itkUCharImage2DType::PixelType* edgeBetweenLabelsMaskBufferPointer = edgeBetweenLabelsMask->GetBufferPointer();
-
-    // itkUIntImage2DType::Pointer ccLabel = gth818n::binaryImageToConnectedComponentLabelImage( gth818n::castItkImage<itkUCharImage2DType, itkShortImage2DType>(m_nucleusBinaryMask) );
-    // itkUIntImage2DType::Pointer sizeLabel = gth818n::labelImageToSizeLabeledImage(ccLabel, m_nucleusSizeThreshold); ///< if an area is smaller than lowerThreshold pixels, discard
 
     const itkUIntImage2DType::PixelType* sizeLabelBufferPointer = sizeLabel->GetBufferPointer();
     for (long it = 0; it < numPixels; ++it)
@@ -197,7 +119,6 @@ namespace gth818n
 
     return;
   }
-
 
   HematoxylinImageSegmentationFilter::itkBinaryMaskImage2DType::Pointer
   HematoxylinImageSegmentationFilter::getNucleiBinaryMaskImage()
@@ -210,7 +131,6 @@ namespace gth818n
 
     return m_nucleusBinaryMask;
   }
-
 
 
 }// namespace gth818n

@@ -41,7 +41,7 @@ public:
 
   //     double maxPhi(long ix, long iy, long iz, double level);
   //     double minPhi(long ix, long iy, long iz, double level);
-  bool getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(long ix, long iy, long iz, double& thePhi);
+  bool getPhiOfTheNbhdWhoIsClosestToZeroLevelInLayerCloserToZeroLevel(long ix, long iy, double& thePhi);
 
   void oneStepLevelSetEvolution();
 

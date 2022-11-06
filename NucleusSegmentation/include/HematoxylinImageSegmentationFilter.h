@@ -1,14 +1,9 @@
 #ifndef HematoxylinImageSegmentationFilter_h_
 #define HematoxylinImageSegmentationFilter_h_
 
-
 // itk
 #include "itkImage.h"
 #include "itkRGBPixel.h"
-
-// // local
-// #include "itkTypedefs.h"
-
 
 namespace gth818n
 {
@@ -65,26 +60,13 @@ namespace gth818n
     typedef itk::Image<int, ImageDimension> itkIntImageType;
     typedef itkUIntImage2DType itkIntImage2DType;
 
-    // typedef itk::Image<char, ImageDimension> itkCharImageType;
-
-    // typedef itk::Image<unsigned short, ImageDimension> itkUShortImageType;
-    // typedef itk::Image<short, ImageDimension> itkShortImage2DType;
-
-    // typedef itk::RGBPixel<unsigned char> RGBPixelType;
-    // typedef itk::Image<RGBPixelType, ImageDimension> itkRGBImage2DType;
-
-
-
     ////////////////////////////////////////////////////////////////////////////////
     /// private data
     const itkUCharImage2DType* m_hematoxylinImage;
     itkBinaryMaskImage2DType::Pointer m_nucleusBinaryMask;
-    //itkIntImage2DType::Pointer m_nucleiLabelImage;
-
 
     float m_nucleusSizeThreshold; ///< region smaller than this will be removed, unit: um^2
     float m_mpp; ///< Micron Per Pixel
-
 
     bool m_allDone;
     /// private data, end
@@ -94,11 +76,7 @@ namespace gth818n
     ////////////////////////////////////////////////////////////////////////////////
     /// private fn
     void _segmentHematoxylinImage();
-
-    void _segmentHematoxylinImage_otsu();
     void _segmentHematoxylinImage_otsu_ChanVese_removeSmallIsland();
-
-
     void _computeNucleiLabelImage();
     /// private fn
     ////////////////////////////////////////////////////////////////////////////////

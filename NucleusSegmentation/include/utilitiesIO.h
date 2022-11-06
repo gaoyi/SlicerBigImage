@@ -7,10 +7,6 @@
 // itk
 #include "itkImage.h"
 
-// // vnl
-// #include "vnl/vnl_matrix.h"
-
-
 namespace gth818n
 {
   /**********************************************************************************

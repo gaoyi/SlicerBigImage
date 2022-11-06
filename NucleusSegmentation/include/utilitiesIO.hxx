@@ -9,20 +9,6 @@
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 
-#include "itkImageRegionIterator.h"
-
-#include "itkVector.h"
-
-#include "itkTransformFactoryBase.h"
-#include "itkTransformFileReader.h"
-#include "itkTransformFileWriter.h"
-
-
-
-// vnl
-#include "vnl/vnl_matrix.h"
-
-
 // local
 #include "utilitiesIO.h"
 
@@ -86,10 +72,6 @@ namespace gth818n
         raise(SIGABRT);
       }
   }
-
-
-
-
 }// namespace
 
 #endif

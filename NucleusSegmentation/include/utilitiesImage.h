@@ -9,9 +9,6 @@
 #include "itkCastImageFilter.h"
 #include "itkOtsuThresholdImageFilter.h"
 
-// // vnl
-// #include "vnl/vnl_matrix.h"
-
 // local
 #include "itkTypedefs.h"
 
@@ -49,9 +46,6 @@ namespace gth818n
   itkFloatImage2DType::Pointer CurvatureFlowSmoothing(itkFloatImage2DType::Pointer img, int numberOfIteration = 10);
   itkFloatImage2DType::Pointer GaussianSmoothing(itkFloatImage2DType::Pointer img, float variance = 3);
 
-  itkUCharImage2DType::Pointer localMinimaMaskFilter(itkFloatImage2DType::Pointer img);
-
-
   itkUCharImage2DType::Pointer edgesOfDifferentLabelRegion(itkUIntImage2DType::Pointer labelImage);
 
   itkUCharImage2DType::Pointer fillHole(const itkUCharImage2DType* maskWithHoles);
@@ -68,11 +62,6 @@ namespace gth818n
 
     return caster->GetOutput();
   }
-
-
-  //itkUCharImage2DType::Pointer ColourDeconvolution(itkRGBImage2DType::Pointer inputImage);
-
-  //itkUIntImage2DType::Pointer scSeg(itkFloatImage2DType::Pointer image, itkUIntImage2DType::Pointer seedImage);
 
 }// namespace gth818n
 
