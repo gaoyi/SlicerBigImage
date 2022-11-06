@@ -13,7 +13,7 @@
 // local
 #include "utilitiesImage.h"
 #include "BinaryMaskAnalysisFilter.h"
-#include "MeanshiftClusteringFilter.h"
+//#include "MeanshiftClusteringFilter.h"
 #include "HierarchicalMeanshiftClusteringFilter.h"
 
 
