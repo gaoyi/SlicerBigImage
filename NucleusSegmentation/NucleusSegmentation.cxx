@@ -47,19 +47,25 @@ int main( int argc, char * argv[] )
   tileAnalyzer.setThreshold(threshold);
   tileAnalyzer.update();
 
+
+  itkUCharImage2DType::Pointer seg = tileAnalyzer.getNucleiBinaryMaskImage();
+  seg->SetSpacing(mpp/1000.);
+
+  gth818n::writeImage<itkUCharImage2DType>(seg, outputImageName.c_str());
+
   //gth818n::writeImage<gth818n::HAndEImageAnalysisFilter::itkIntImage2DType>(tileAnalyzer.getNucleiLabelImage(), outputImageName.c_str());
 
   //std::cout<<tileAnalyzer.getTotalNumberOfConnectedComponents()<<std::endl;
 
-  gth818n::BinaryMaskAnalysisFilter binaryMaskAnalyzer;
-  binaryMaskAnalyzer.setMaskImage( tileAnalyzer.getNucleiBinaryMaskImage() );
-  binaryMaskAnalyzer.setMPP(mpp);
-  binaryMaskAnalyzer.update();
+  // //--------------------------------------------------------------------------------
+  // // de-clumping
+  // gth818n::BinaryMaskAnalysisFilter binaryMaskAnalyzer;
+  // binaryMaskAnalyzer.setMaskImage( tileAnalyzer.getNucleiBinaryMaskImage() );
+  // binaryMaskAnalyzer.setMPP(mpp);
+  // binaryMaskAnalyzer.update();
 
-  unsigned char featureType = 1; ///< area of the objects;
-  gth818n::writeImage<itk::Image<short, 2> >(gth818n::castItkImage<gth818n::BinaryMaskAnalysisFilter::itkFloatImage2DType, itk::Image<short, 2> >(binaryMaskAnalyzer.getFeatureColoredImage(featureType)), outputImageName.c_str());
-
-  //binaryMaskAnalyzer.update();
+  // unsigned char featureType = 1; ///< area of the objects;
+  // gth818n::writeImage<itk::Image<short, 2> >(gth818n::castItkImage<gth818n::BinaryMaskAnalysisFilter::itkFloatImage2DType, itk::Image<short, 2> >(binaryMaskAnalyzer.getFeatureColoredImage(featureType)), outputImageName.c_str());
 
 
   return EXIT_SUCCESS;

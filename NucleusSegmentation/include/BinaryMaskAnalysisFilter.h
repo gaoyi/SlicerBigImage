@@ -89,7 +89,7 @@ namespace gth818n
 
     LabelMapType::Pointer m_labelMap;
 
-    float m_mpp; ///< Micron Per Pixel
+    float m_micronPerPixel; ///< Micron Per Pixel
 
     float m_objectSizeThreshold; ///< object smaller than this will be discarded. unit in physical spaces
 

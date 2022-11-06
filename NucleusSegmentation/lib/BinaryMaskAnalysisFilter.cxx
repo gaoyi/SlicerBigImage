@@ -29,7 +29,7 @@ namespace gth818n
     m_objectPerimeters.clear();
     m_objectEquivalentSphericalRadius.clear();
 
-    m_mpp = -1.0;
+    m_micronPerPixel = -1.0;
 
     m_binaryMask = 0;
     m_inputImage = 0;
@@ -47,13 +47,16 @@ namespace gth818n
 
   void BinaryMaskAnalysisFilter::update()
   {
-    if (m_mpp < 0)
+    if (m_micronPerPixel < 0)
       {
         std::cerr<<"ERROR: mpp not set yet.\n";
         abort();
       }
 
-    m_binaryMask->SetSpacing(m_mpp); ///< spacing AFFECT the ShapeLabelObject filter in things like EquivalentSphericalRadius, but not those features that are pixel based.
+    ///< spacing AFFECT the ShapeLabelObject filter in things like
+    ///EquivalentSphericalRadius, but not those features that are
+    ///pixel based.
+    m_binaryMask->SetSpacing(m_micronPerPixel/1000.0);  //SetSpacing is mm based, so /1000.
 
     _computeConnectedComponentsLabelImage();
 
@@ -217,7 +220,7 @@ namespace gth818n
     typedef itk::RelabelComponentImageFilter<itkIntImage2DType, itkIntImage2DType> FilterType;
     FilterType::Pointer relabelFilter = FilterType::New();
     relabelFilter->SetInput(m_connectedComponentLabelImage);
-    //relabelFilter->SetMinimumObjectSize(static_cast<FilterType::ObjectSizeType>(m_objectSizeThreshold/m_mpp/m_mpp)); // This command takes number of pixels as input
+    //relabelFilter->SetMinimumObjectSize(static_cast<FilterType::ObjectSizeType>(m_objectSizeThreshold/m_micronPerPixel/m_micronPerPixel)); // This command takes number of pixels as input
     relabelFilter->Update();
     m_connectedComponentLabelImage = relabelFilter->GetOutput();
 
@@ -234,7 +237,7 @@ namespace gth818n
     m_featureColoredImage->CopyInformation(m_binaryMask);
     m_featureColoredImage->FillBuffer(0.0);
 
-    m_featureColoredImage->SetSpacing(m_mpp);
+    m_featureColoredImage->SetSpacing(m_micronPerPixel/1000.); //SetSpacing is mm based, so /1000.
 
     long numPixels = m_featureColoredImage->GetLargestPossibleRegion().GetNumberOfPixels();
 
@@ -336,7 +339,7 @@ namespace gth818n
         // std::cout << "    BoundingBox: "
         //           << labelObject->GetBoundingBox() << std::endl;
 
-        //m_objectAreas[n] = m_mpp*m_mpp*static_cast<float>(labelObject->GetNumberOfPixels());
+        //m_objectAreas[n] = m_micronPerPixel*m_micronPerPixel*static_cast<float>(labelObject->GetNumberOfPixels());
         m_objectAreas[n] = labelObject->GetPhysicalSize();
         //m_objectAreas[n] = static_cast<float>(labelObject->GetNumberOfPixels());
         m_objectPerimeters[n]  = labelObject->GetPerimeter();
@@ -344,7 +347,7 @@ namespace gth818n
         //m_objectNecessityOfBreaking[n] = m_objectPerimeters[n]*m_objectPerimeters[n]/m_objectAreas[n];
 
         // m_fileForOutputNucluesFeatures << labelObject->GetNumberOfPixels() << ",";
-        // m_fileForOutputNucluesFeatures << m_mpp*m_mpp*static_cast<float>(labelObject->GetNumberOfPixels()) << ",";
+        // m_fileForOutputNucluesFeatures << m_micronPerPixel*m_micronPerPixel*static_cast<float>(labelObject->GetNumberOfPixels()) << ",";
         // m_fileForOutputNucluesFeatures << labelObject->GetNumberOfPixelsOnBorder() << ",";
         // m_fileForOutputNucluesFeatures << labelObject->GetFeretDiameter() << ",";
         // m_fileForOutputNucluesFeatures << labelObject->GetPrincipalMoments()[0] << "," << labelObject->GetPrincipalMoments()[1] << ",";
@@ -429,7 +432,7 @@ namespace gth818n
   {
     if (mpp > 0)
       {
-        m_mpp = mpp;
+        m_micronPerPixel = mpp;
       }
     else
       {
@@ -449,8 +452,8 @@ namespace gth818n
     typedef itk::RelabelComponentImageFilter<itkIntImage2DType, itkIntImage2DType> FilterType;
     FilterType::Pointer relabelFilter = FilterType::New();
     relabelFilter->SetInput(connected->GetOutput());
-    //std::cout<<static_cast<FilterType::ObjectSizeType>(m_objectSizeThreshold/m_mpp/m_mpp)<<std::endl;
-    relabelFilter->SetMinimumObjectSize(static_cast<FilterType::ObjectSizeType>(m_objectSizeThreshold/m_mpp/m_mpp)); // This command takes number of pixels as input
+    //std::cout<<static_cast<FilterType::ObjectSizeType>(m_objectSizeThreshold/m_micronPerPixel/m_micronPerPixel)<<std::endl;
+    relabelFilter->SetMinimumObjectSize(static_cast<FilterType::ObjectSizeType>(m_objectSizeThreshold/m_micronPerPixel/m_micronPerPixel)); // This command takes number of pixels as input
     relabelFilter->Update();
 
     m_connectedComponentLabelImage = relabelFilter->GetOutput();
