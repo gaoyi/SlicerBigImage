@@ -39,11 +39,12 @@ int main( int argc, char * argv[] )
   // itkUCharImage2DType::Pointer hematoxylinChannelImage = gth818n::ExtractHematoxylinChannel(img);
   // gth818n::writeImage<itkUCharImage2DType>(hematoxylinChannelImage, outputHImage.c_str(), true);
 
-  int magnification = 20; //hack should NOT be fixed
+  //int magnification = 20; //hack should NOT be fixed
 
   gth818n::HAndEImageAnalysisFilter tileAnalyzer;
   tileAnalyzer.setInputHAndEImage(img);
-  tileAnalyzer.setMagnification(magnification);
+  //tileAnalyzer.setMagnification(magnification);
+  tileAnalyzer.setMPP(mpp);
   tileAnalyzer.setThreshold(threshold);
   tileAnalyzer.update();
 

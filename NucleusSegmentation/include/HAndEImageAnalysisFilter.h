@@ -65,7 +65,7 @@ namespace gth818n
     void setInputHAndEImage(itkRGBImage2DType::Pointer inputHAndEImage) {m_HAndEImage = inputHAndEImage;}
 
     void setMPP(float mpp);
-    void setMagnification(int magnification) {m_magnification = magnification;}
+    //void setMagnification(int magnification) {m_magnification = magnification;}
     void setThreshold(float threshold) { m_threshold = threshold;}
 
     void setNucleusSizeThreshold(float sizeThld) {m_nucleusSizeThreshold = sizeThld;}
@@ -95,7 +95,7 @@ namespace gth818n
 
     ////////////////////////////////////////////////////////////////////////////////
     /// private data
-    int m_magnification;
+    //int m_magnification;
 
     float m_mpp;
 
@@ -133,8 +133,8 @@ namespace gth818n
 
     void _computeNucleiLabelImage();
 
-    void _computeAllNucleiSizes();
-    void _computeAllNucleiRoundness();
+    // void _computeAllNucleiSizes();
+    // void _computeAllNucleiRoundness();
     /// private fn
     ////////////////////////////////////////////////////////////////////////////////
   };

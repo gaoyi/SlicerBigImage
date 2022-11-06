@@ -358,38 +358,38 @@ namespace gth818n
     return;
   }
 
-  void HAndEImageAnalysisFilter::_computeAllNucleiSizes()
-  {
-    //std::cout<<"m_totalNumberOfConnectedComponents = "<<m_totalNumberOfConnectedComponents<<std::endl<<std::flush;
+  // void HAndEImageAnalysisFilter::_computeAllNucleiSizes()
+  // {
+  //   //std::cout<<"m_totalNumberOfConnectedComponents = "<<m_totalNumberOfConnectedComponents<<std::endl<<std::flush;
 
-    m_sizesOfAllNuclei.resize(m_totalNumberOfConnectedComponents + 1);
+  //   m_sizesOfAllNuclei.resize(m_totalNumberOfConnectedComponents + 1);
 
-    //std::cout<<"----------- 1 ----------------\n"<<std::endl;
+  //   //std::cout<<"----------- 1 ----------------\n"<<std::endl;
 
-    const itkUIntImage2DType::PixelType* labelImageOfCurrentTilePtr = static_cast<itkUIntImage2DType::PixelType*>(m_nucleiLabelImage->GetBufferPointer());
+  //   const itkUIntImage2DType::PixelType* labelImageOfCurrentTilePtr = static_cast<itkUIntImage2DType::PixelType*>(m_nucleiLabelImage->GetBufferPointer());
 
-    //std::cout<<"----------- 2 ----------------\n"<<std::endl;
+  //   //std::cout<<"----------- 2 ----------------\n"<<std::endl;
 
-    unsigned long numberOfPixels = m_nucleiLabelImage->GetLargestPossibleRegion().GetNumberOfPixels();
+  //   unsigned long numberOfPixels = m_nucleiLabelImage->GetLargestPossibleRegion().GetNumberOfPixels();
 
-    //std::cout<<"numberOfPixels = "<<numberOfPixels<<std::endl<<std::flush;
+  //   //std::cout<<"numberOfPixels = "<<numberOfPixels<<std::endl<<std::flush;
 
-    float magnificationAdjustRatio = static_cast<float>(m_magnification)/20.0; ///< So that the size will the equivalent to under the magnification of 20x
+  //   float magnificationAdjustRatio = static_cast<float>(m_magnification)/20.0; ///< So that the size will the equivalent to under the magnification of 20x
 
-    //std::cout<<"magnificationAdjustRatio = "<<magnificationAdjustRatio<<std::endl<<std::flush;
+  //   //std::cout<<"magnificationAdjustRatio = "<<magnificationAdjustRatio<<std::endl<<std::flush;
 
-    for (unsigned long it = 0; it < numberOfPixels; ++it)
-      {
-        ++m_sizesOfAllNuclei[labelImageOfCurrentTilePtr[it]];
-      }
+  //   for (unsigned long it = 0; it < numberOfPixels; ++it)
+  //     {
+  //       ++m_sizesOfAllNuclei[labelImageOfCurrentTilePtr[it]];
+  //     }
 
-    for (unsigned long it = 0; it < m_sizesOfAllNuclei.size(); ++it)
-      {
-        m_sizesOfAllNuclei[it] /= magnificationAdjustRatio;
-      }
+  //   for (unsigned long it = 0; it < m_sizesOfAllNuclei.size(); ++it)
+  //     {
+  //       m_sizesOfAllNuclei[it] /= magnificationAdjustRatio;
+  //     }
 
-    return;
-  }
+  //   return;
+  // }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// The roundness of an object is computed as 1 - FA where FA is the
@@ -397,82 +397,82 @@ namespace gth818n
   /// covariance matrix of all the points in this object.
   ///
   /// Should be from 0 (non-round) to 1 (pure round)
-  void HAndEImageAnalysisFilter::_computeAllNucleiRoundness()
-  {
-    /// go thru each pixel, put its coordinate to the corresponding list
-    std::vector< std::vector<itk2DIndexType> > listOfCoordinatesOfEachObject(m_totalNumberOfConnectedComponents + 1);
+  // void HAndEImageAnalysisFilter::_computeAllNucleiRoundness()
+  // {
+  //   /// go thru each pixel, put its coordinate to the corresponding list
+  //   std::vector< std::vector<itk2DIndexType> > listOfCoordinatesOfEachObject(m_totalNumberOfConnectedComponents + 1);
 
-    const itkUIntImage2DType::PixelType* labelImageOfCurrentTilePtr = static_cast<itkUIntImage2DType::PixelType*>(m_nucleiLabelImage->GetBufferPointer());
+  //   const itkUIntImage2DType::PixelType* labelImageOfCurrentTilePtr = static_cast<itkUIntImage2DType::PixelType*>(m_nucleiLabelImage->GetBufferPointer());
 
-    unsigned long nx = m_nucleiLabelImage->GetLargestPossibleRegion().GetSize()[0];
-    unsigned long ny = m_nucleiLabelImage->GetLargestPossibleRegion().GetSize()[1];
+  //   unsigned long nx = m_nucleiLabelImage->GetLargestPossibleRegion().GetSize()[0];
+  //   unsigned long ny = m_nucleiLabelImage->GetLargestPossibleRegion().GetSize()[1];
 
-    {
-      unsigned long it = 0;
-      itk2DIndexType idx;
+  //   {
+  //     unsigned long it = 0;
+  //     itk2DIndexType idx;
 
-      for (unsigned long iy = 0; iy < ny; ++iy)
-        {
-          idx[1] = iy;
-          for (unsigned long ix = 0; ix < nx; ++ix)
-            {
-              idx[0] = ix;
-              itkUIntImage2DType::PixelType objectId = labelImageOfCurrentTilePtr[it++];
-              listOfCoordinatesOfEachObject[objectId].push_back(idx);
-            }
-        }
-    }
+  //     for (unsigned long iy = 0; iy < ny; ++iy)
+  //       {
+  //         idx[1] = iy;
+  //         for (unsigned long ix = 0; ix < nx; ++ix)
+  //           {
+  //             idx[0] = ix;
+  //             itkUIntImage2DType::PixelType objectId = labelImageOfCurrentTilePtr[it++];
+  //             listOfCoordinatesOfEachObject[objectId].push_back(idx);
+  //           }
+  //       }
+  //   }
 
-    /// For each object, if it contains more than pixels in [10, 200],
-    /// compute the fractional anisotrpoy. If we have 3 pixels, we can
-    /// compute the co-variance matrix and then the eigen
-    /// decomposition. But only 10 to 200 pixel area may be
-    /// meaningful.
-    m_roundnessOfAllNuclei.resize(m_totalNumberOfConnectedComponents + 1);
+  //   /// For each object, if it contains more than pixels in [10, 200],
+  //   /// compute the fractional anisotrpoy. If we have 3 pixels, we can
+  //   /// compute the co-variance matrix and then the eigen
+  //   /// decomposition. But only 10 to 200 pixel area may be
+  //   /// meaningful.
+  //   m_roundnessOfAllNuclei.resize(m_totalNumberOfConnectedComponents + 1);
 
-    for (itkUIntImage2DType::PixelType itObject = 0; itObject < m_totalNumberOfConnectedComponents; ++itObject)
-      {
-        if (10 > m_sizesOfAllNuclei[itObject] || 200 < m_sizesOfAllNuclei[itObject])
-          {
-            m_roundnessOfAllNuclei[itObject] = -1;
-            continue;
-          }
+  //   for (itkUIntImage2DType::PixelType itObject = 0; itObject < m_totalNumberOfConnectedComponents; ++itObject)
+  //     {
+  //       if (10 > m_sizesOfAllNuclei[itObject] || 200 < m_sizesOfAllNuclei[itObject])
+  //         {
+  //           m_roundnessOfAllNuclei[itObject] = -1;
+  //           continue;
+  //         }
 
-        const std::vector<itk2DIndexType>& thePointsInThisObject = listOfCoordinatesOfEachObject[itObject];
-        int numOfPointsInThisObject = thePointsInThisObject.size();
+  //       const std::vector<itk2DIndexType>& thePointsInThisObject = listOfCoordinatesOfEachObject[itObject];
+  //       int numOfPointsInThisObject = thePointsInThisObject.size();
 
-        float meanX = 0;
-        float meanY = 0;
+  //       float meanX = 0;
+  //       float meanY = 0;
 
-        for (int itPoint = 0; itPoint < numOfPointsInThisObject; ++itPoint)
-          {
-            meanX += thePointsInThisObject[itPoint][0];
-            meanY += thePointsInThisObject[itPoint][1];
-          }
+  //       for (int itPoint = 0; itPoint < numOfPointsInThisObject; ++itPoint)
+  //         {
+  //           meanX += thePointsInThisObject[itPoint][0];
+  //           meanY += thePointsInThisObject[itPoint][1];
+  //         }
 
-        meanX /= static_cast<float>(numOfPointsInThisObject);
-        meanY /= static_cast<float>(numOfPointsInThisObject);
+  //       meanX /= static_cast<float>(numOfPointsInThisObject);
+  //       meanY /= static_cast<float>(numOfPointsInThisObject);
 
-        vnlFloatMatrixType M(2, numOfPointsInThisObject);
-        for (int itPoint = 0; itPoint < numOfPointsInThisObject; ++itPoint)
-          {
-            M(0, itPoint) = thePointsInThisObject[itPoint][0] - meanX;
-            M(1, itPoint) = thePointsInThisObject[itPoint][1] - meanY;
-          }
+  //       vnlFloatMatrixType M(2, numOfPointsInThisObject);
+  //       for (int itPoint = 0; itPoint < numOfPointsInThisObject; ++itPoint)
+  //         {
+  //           M(0, itPoint) = thePointsInThisObject[itPoint][0] - meanX;
+  //           M(1, itPoint) = thePointsInThisObject[itPoint][1] - meanY;
+  //         }
 
-        vnlFloatMatrixType covMatrix = M*( M.transpose() );
+  //       vnlFloatMatrixType covMatrix = M*( M.transpose() );
 
-        vnl_symmetric_eigensystem<float> eig(covMatrix);
-        float ev0 = eig.get_eigenvalue(0);
-        float ev1 = eig.get_eigenvalue(1);
+  //       vnl_symmetric_eigensystem<float> eig(covMatrix);
+  //       float ev0 = eig.get_eigenvalue(0);
+  //       float ev1 = eig.get_eigenvalue(1);
 
-        float fa = fabs(ev0 - ev1)/sqrt(ev0*ev0 + ev1*ev1);
+  //       float fa = fabs(ev0 - ev1)/sqrt(ev0*ev0 + ev1*ev1);
 
-        m_roundnessOfAllNuclei[itObject] = 1.0 - fa;
-      }
+  //       m_roundnessOfAllNuclei[itObject] = 1.0 - fa;
+  //     }
 
-    return;
-  }
+  //   return;
+  // }
 
 
 
