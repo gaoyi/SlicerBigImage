@@ -141,9 +141,6 @@ namespace gth818n
 
     /// Step 10. Go through all labels, find ones that are larger than 400um^2
     /// Step 20. Get all index of the region with this label, save as listSamples
-    const itkIntImage2DType::PixelType* m_connectedComponentLabelImageBufferPtr = m_connectedComponentLabelImage->GetBufferPointer();
-    long numPixels = m_connectedComponentLabelImage->GetLargestPossibleRegion().GetNumberOfPixels();
-
     long nx = m_connectedComponentLabelImage->GetLargestPossibleRegion().GetSize()[0];
     long ny = m_connectedComponentLabelImage->GetLargestPossibleRegion().GetSize()[1];
 

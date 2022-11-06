@@ -153,7 +153,7 @@ namespace gth818n
 
     for (long it = 0; it < m_numberOfMSIteration; ++it)
       {
-        for (long itp = 0; itp < m_seedPoints->Size(); ++itp)
+        for (long unsigned int itp = 0; itp < m_seedPoints->Size(); ++itp)
           {
             queryPoint = m_seedPoints->GetMeasurementVector(itp);
             m_tree->Search( queryPoint, m_radius, neighbors ) ;

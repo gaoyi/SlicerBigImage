@@ -51,8 +51,6 @@ namespace gth818n
 
     typedef typename itk::Statistics::KdTreeGenerator< VectorSampleType > TreeGeneratorType;
     typedef typename TreeGeneratorType::KdTreeType TreeType;
-    typedef typename TreeType::NearestNeighbors NeighborsType;
-    typedef typename TreeType::KdTreeNodeType NodeType;
 
     typename TreeGeneratorType::Pointer subTreeGenerator = TreeGeneratorType::New();
     subTreeGenerator->SetSample( subsample );
