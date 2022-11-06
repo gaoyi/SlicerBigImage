@@ -850,6 +850,9 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.objectiveMagnificationMax = self.slideInfo["objectiveMagnification"]
     self.objectiveMagnificationMin = self.slideInfo["objectiveMagnification"]/self.level_downsamples[-1]/3.0 # so to include more
 
+    # print("======== self.objectiveMagnificationMax = ", self.objectiveMagnificationMax)
+    # print("======== self.MPP = ", self.MPP)
+
     # This will trigger the onWSILevelChanged in which the
     # loadPatchFromBigRGBAImage will be called, where the
     # currentPatchGrayChannel node will be filled--- but it's not
@@ -967,8 +970,9 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     parameters['outputEImage'] = volumeNode.GetID()
     parameters['outputHImage'] = volumeNode.GetID()
     parameters['outputImageName'] = nucleusLabelImageNode.GetID()
-    parameters['mpp'] = 0.5/20.0*float(self.ui.ObjectiveMagnificationSlicerWidget.value) # hack: assume mpp=0.5 at 20x
+    parameters['mpp'] = self.MPP/self.objectiveMagnificationMax*float(self.ui.ObjectiveMagnificationSlicerWidget.value)
     slicer.cli.run( slicer.modules.nucleussegmentation, None, parameters, wait_for_completion=True )
+
 
     # volumeNode = slicer.util.getNode('currentPatchGrayChannel') #self.patchGrayVolumeNode
     # slicer.util.setSliceViewerLayers(foreground=volumeNode)
@@ -985,7 +989,8 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # slicer.util.setSliceViewerLayers(foreground=volumeNode)
     volumeNode1 = slicer.util.getNode('currentPatchFromBigRGBAImage')
     slicer.util.setSliceViewerLayers(background = volumeNode1)
-    #nucleusLabelImageNode
+
+    slicer.util.getNode('vtkMRMLSliceNodeRed').SetUseLabelOutline(1)
 
     # slicer.util.setSliceViewerLayers(foregroundOpacity=0.4)
 
