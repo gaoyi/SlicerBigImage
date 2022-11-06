@@ -1,5 +1,5 @@
-#ifndef Image/gth818nImage_hxx_
-#define Image/gth818nImage_hxx_
+#ifndef gth818nImage_hxx_
+#define gth818nImage_hxx_
 
 #include <csignal>
 #include <string>
@@ -24,7 +24,7 @@
 
 
 // local
-#include "Image/gth818nImage.h"
+#include "utilitiesIO.h"
 
 namespace gth818n
 {
@@ -47,8 +47,8 @@ namespace gth818n
       }
     catch ( itk::ExceptionObject &err)
       {
-        std::cerr<< "ExceptionObject caught !" << std::endl; 
-        std::cerr<< err << std::endl; 
+        std::cerr<< "ExceptionObject caught !" << std::endl;
+        std::cerr<< err << std::endl;
         raise(SIGABRT);
       }
 
@@ -81,9 +81,9 @@ namespace gth818n
       }
     catch ( itk::ExceptionObject &err)
       {
-        std::cout << "ExceptionObject caught !" << std::endl; 
-        std::cout << err << std::endl; 
-        raise(SIGABRT);   
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err << std::endl;
+        raise(SIGABRT);
       }
   }
 

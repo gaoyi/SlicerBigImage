@@ -1,5 +1,5 @@
-#ifndef Image/gth818nImage_h_
-#define Image/gth818nImage_h_
+#ifndef gth818nImage_h_
+#define gth818nImage_h_
 
 
 #include <string>
@@ -28,6 +28,6 @@ namespace gth818n
 }// namespace gth818n
 
 
-#include "Image/gth818nImage.hxx"
+#include "utilitiesIO.hxx"
 
 #endif

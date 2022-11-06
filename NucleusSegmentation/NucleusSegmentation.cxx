@@ -8,7 +8,7 @@
 
 #include "itkTypedefs.h"
 //#include "Image/gth818nImage.h"
-#include "include/gth818nImageIO.h"
+#include "include/utilitiesIO.h"
 #include "utilitiesImage.h"
 #include "ColorDecomposition.h"
 
