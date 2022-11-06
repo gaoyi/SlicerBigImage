@@ -202,6 +202,9 @@
       </item>
       <item row="2" column="0" colspan="2">
        <widget class="QPushButton" name="detectGlandButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="toolTip">
          <string>Detect gland figures in this patch</string>
         </property>
