@@ -63,6 +63,8 @@ namespace gth818n
     /// public fn
     //void setInputHAndEImage(cv::Mat inputHAndEImage) {m_HAndEImage = inputHAndEImage;}
     void setInputHAndEImage(itkRGBImage2DType::Pointer inputHAndEImage) {m_HAndEImage = inputHAndEImage;}
+
+    void setMPP(float mpp);
     void setMagnification(int magnification) {m_magnification = magnification;}
     void setThreshold(float threshold) { m_threshold = threshold;}
 
@@ -94,6 +96,8 @@ namespace gth818n
     ////////////////////////////////////////////////////////////////////////////////
     /// private data
     int m_magnification;
+
+    float m_mpp;
 
     // cv::Mat m_HAndEImage;
     // cv::Mat m_HAndEImageNormalized;

@@ -71,11 +71,27 @@ namespace gth818n
   //   return;
   // }
 
+
+  void HAndEImageAnalysisFilter::setMPP(float mpp)
+  {
+    if (mpp > 0)
+      {
+        m_mpp = mpp;
+      }
+    else
+      {
+        std::cerr<<"Error: mpp should be > 0. But got "<<mpp<<std::endl;
+      }
+
+    return;
+  }
+
   void HAndEImageAnalysisFilter::_segmentHematoxylinImage()
   {
     HematoxylinImageSegmentationFilter imageAnalyzer;
     imageAnalyzer.setHematoxylinImage( m_hematoxylinImage );
     imageAnalyzer.setNucleusSizeThreshold(m_nucleusSizeThreshold);
+    imageAnalyzer.setMPP(m_mpp);
     imageAnalyzer.update();
 
     m_nucleusBinaryMask = imageAnalyzer.getNucleiBinaryMaskImage();
@@ -464,6 +480,8 @@ namespace gth818n
   HAndEImageAnalysisFilter::HAndEImageAnalysisFilter()
   {
     m_nucleusSizeThreshold = 0;
+
+    m_mpp = 0.25;
 
     m_allDone = false;
 

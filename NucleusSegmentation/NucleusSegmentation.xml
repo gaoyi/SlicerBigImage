@@ -34,25 +34,25 @@
       <index>0</index>
       <description><![CDATA[Input image]]></description>
     </image>
-    <image type="scalar">
-      <name>outputHImage</name>
-      <label>Output H-channel Image</label>
-      <channel>output</channel>
-      <index>1</index>
-      <description><![CDATA[Ouptut H image]]></description>
-    </image>
-    <image type="scalar">
-      <name>outputEImage</name>
-      <label>Output E-channel Image</label>
-      <channel>output</channel>
-      <index>2</index>
-      <description><![CDATA[Output E image]]></description>
-    </image>
+    <!-- <image type="scalar"> -->
+    <!--   <name>outputHImage</name> -->
+    <!--   <label>Output H-channel Image</label> -->
+    <!--   <channel>output</channel> -->
+    <!--   <index>1</index> -->
+    <!--   <description><![CDATA[Ouptut H image]]></description> -->
+    <!-- </image> -->
+    <!-- <image type="scalar"> -->
+    <!--   <name>outputEImage</name> -->
+    <!--   <label>Output E-channel Image</label> -->
+    <!--   <channel>output</channel> -->
+    <!--   <index>2</index> -->
+    <!--   <description><![CDATA[Output E image]]></description> -->
+    <!-- </image> -->
     <image type="label">
       <name>outputImageName</name>
       <label>Output Segmentation Image</label>
       <channel>output</channel>
-      <index>3</index>
+      <index>1</index>
       <description><![CDATA[Output Image]]></description>
     </image>
   </parameters>
