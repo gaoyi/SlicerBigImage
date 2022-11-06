@@ -9,7 +9,7 @@
 
 #include "HematoxylinImageSegmentationFilter.h"
 
-#include "imageProcessing/segmentation/sparseFieldLevelSetITK/SFLSLocalChanVeseSegmentor2D.h"
+#include "../include/SFLSLocalChanVeseSegmentor2D.h"
 
 #include "itkMinimumMaximumImageCalculator.h"
 

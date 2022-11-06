@@ -10,7 +10,7 @@
 #include "vnl/algo/vnl_symmetric_eigensystem.h"
 
 
-#include "Image/gth818nImage.h"
+//#include "Image/gth818nImage.h"
 #include "utilitiesImage.h"
 
 #include "itkCastImageFilter.h"
@@ -32,13 +32,13 @@
 
 // local
 #include "HAndEImageAnalysisFilter.h"
-#include "imageProcessing/segmentation/sparseFieldLevelSetITK/SFLSLocalChanVeseSegmentor2D.h"
+#include "../include/SFLSLocalChanVeseSegmentor2D.h"
 
 #include "FastGrowCutSegmenter2D.h"
 #include "HematoxylinImageSegmentationFilter.h"
 
 // for debug
-#include "Image/gth818nImage.h"
+//#include "Image/gth818nImage.h"
 
 namespace gth818n
 {
