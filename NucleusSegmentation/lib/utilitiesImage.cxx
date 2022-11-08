@@ -1,7 +1,7 @@
 #include <csignal>
 #include <string>
 
-#include <omp.h>
+//#include <omp.h>
 
 // itk
 #include "itkImage.h"

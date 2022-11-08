@@ -238,7 +238,8 @@ namespace gth818n
 
     long numPixels = m_featureColoredImage->GetLargestPossibleRegion().GetNumberOfPixels();
 
-    if (0 == m_connectedComponentLabelImage)
+    //if (0 == m_connectedComponentLabelImage)
+    if (!m_connectedComponentLabelImage)
       {
         _computeConnectedComponentsLabelImage();
       }
