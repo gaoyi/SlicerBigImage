@@ -14,6 +14,11 @@ import numpy
 
 import math
 
+try:
+    from tiffslide import TiffSlide
+except ImportError:
+    slicer.util.pip_install("tiffslide")
+    from tiffslide import TiffSlide
 
 #
 # BigImageViewer
@@ -154,8 +159,8 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     interactor.AddObserver(vtk.vtkCommand.LeftButtonPressEvent, self.onLeftButtonPressed)
     interactor.AddObserver(vtk.vtkCommand.LeftButtonReleaseEvent, self.onLeftButtonReleased)
 
-    interactor.AddObserver(vtk.vtkCommand.MouseWheelForwardEvent, self.onMouseWheelForwardEvent)
-    interactor.AddObserver(vtk.vtkCommand.MouseWheelBackwardEvent, self.onMouseWheelBackwardEvent)
+    interactor.AddObserver(vtk.vtkCommand.MouseWheelForwardEvent, self.onMouseWheelForwardEvent, 1.0)
+    interactor.AddObserver(vtk.vtkCommand.MouseWheelBackwardEvent, self.onMouseWheelBackwardEvent, 1.0)
 
   #
   # Customized mouse right button pressed event
@@ -219,6 +224,7 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
       # If send this signal every time the slider changes, will trigger loading patch. This will make the zooming very slow
       #self.ui.ObjectiveMagnificationSlicerWidget.valueChanged(self.ui.ObjectiveMagnificationSlicerWidget.value)
+
 
 
   def onMouseWheelBackwardEvent(self, obj, event=None):
@@ -523,10 +529,11 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
   def onWSILevelChanged(self):
-    import openslide
-    ds = (self.objectiveMagnificationMax)/(self.ui.ObjectiveMagnificationSlicerWidget.value)
+    # Change from: import openslide
+    import tiffslide
 
-    slide = openslide.OpenSlide(self.BigRGBAImagePathname)
+    ds = (self.objectiveMagnificationMax)/(self.ui.ObjectiveMagnificationSlicerWidget.value)
+    slide = tiffslide.TiffSlide(self.BigRGBAImagePathname) # Use TiffSlide instead of OpenSlide
     self.BigRGBAImageLevelToLoad = slide.get_best_level_for_downsample(ds)
     slide.close()
 
@@ -572,17 +579,14 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
   def getRegionFromFileAsRGBNumpyArray(self, WSIName, level, topX0, topY0, width, height):
-    import openslide
+    # Change from: import openslide
+    import tiffslide
 
-    # I currently do not have range check. May add later
-    slide = openslide.OpenSlide(WSIName)
-
+    slide = tiffslide.TiffSlide(WSIName) # Use TiffSlide instead of OpenSlide
     thisTilePilIm = slide.read_region((topX0, topY0), level, (width, height))
     if thisTilePilIm.mode != "RGB":
         thisTilePilIm = thisTilePilIm.convert("RGB")
-
     imRGBNdarray = numpy.asarray(thisTilePilIm)
-
     slide.close()
 
     return imRGBNdarray
@@ -1223,20 +1227,70 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
 
 
 
-  def getSlideInfo(self, svsPathname):
-    import openslide
+  def getSlideInfo(self, slidePath):
+    slide = TiffSlide(slidePath)
+    info = {}
 
-    slide = openslide.OpenSlide(svsPathname)
+    # 基础金字塔信息
+    info["level_count"] = slide.level_count
+    info["level_dimensions"] = slide.level_dimensions
+    info["level_downsamples"] = slide.level_downsamples
 
-    slideInfo = {'slidePathname':svsPathname,
-                 'level_count':slide.level_count,
-                 'level_dimensions': slide.level_dimensions,
-                 'level_downsamples': slide.level_downsamples,
-                 'mpp': [float(slide.properties['openslide.mpp-x']), float(slide.properties['openslide.mpp-y'])],
-                 'objectiveMagnification': float(slide.properties['openslide.objective-power'])}
+    # --------------------------
+    # 修复：正确获取 MPP
+    # --------------------------
+    try:
+        # 方式 1：新版 tiffslide
+        mpp_x = slide.properties.get("tiffslide.mpp-x", None)
+        mpp_y = slide.properties.get("tiffslide.mpp-y", None)
+        if mpp_x is None:
+            # 方式 2：从 OpenSlide 兼容属性读取
+            mpp_x = slide.properties.get("openslide.mpp-x", 0.5)
+            mpp_y = slide.properties.get("openslide.mpp-y", 0.5)
+    except:
+        mpp_x = 0.5
+        mpp_y = 0.5
+
+    info["mpp"] = (float(mpp_x), float(mpp_y))
+
+    # 放大倍数
+    info["objectiveMagnification"] = 20.0
+    try:
+        obj = slide.properties.get("tiffslide.objective", 20.0)
+        info["objectiveMagnification"] = float(obj)
+    except:
+        pass
+
     slide.close()
-
-    return slideInfo
+    return info
+    # import tiffslide as openslide
+    # slide = openslide.OpenSlide(slidePath)
+    
+    # # 1. Safely extract metadata with defaults (The previous fix)
+    # props = slide.properties
+    # mpp_x = float(props.get('openslide.mpp-x', 1.0))
+    # mpp_y = float(props.get('openslide.mpp-y', 1.0))
+    # obj_power = float(props.get('openslide.objective-power', 40.0))
+    # vendor = props.get('openslide.vendor', 'Unknown')
+    
+    # # 2. Extract intrinsic slide object attributes (The missing piece)
+    # width, height = slide.dimensions
+    
+    # slideInfo = {
+    #     'width': width,
+    #     'height': height,
+    #     'mpp': [mpp_x, mpp_y],
+    #     'objectiveMagnification': obj_power,
+    #     'vendor': vendor,
+        
+    #     # Pyramid structural data required by BigImageViewer UI
+    #     'level_count': slide.level_count,
+    #     'level_dimensions': slide.level_dimensions,
+    #     'level_downsamples': slide.level_downsamples
+    # }
+    
+    # slide.close()
+    # return slideInfo
 
 
 
