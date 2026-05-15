@@ -204,8 +204,12 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     newPos = interactor.GetEventPosition()
 
-    self.ui.topLeftXSliderWidget.setValue(self.ui.topLeftXSliderWidget.value + 10.0*(self.leftMouseButtonPos[0] - newPos[0]))
-    self.ui.topLeftYSliderWidget.setValue(self.ui.topLeftYSliderWidget.value + 10.0*(newPos[1] - self.leftMouseButtonPos[1])) # x and y are different so the orders are different
+    zoom = self.ui.ObjectiveMagnificationSlicerWidget.value
+    # print(f'old: {self.leftMouseButtonPos}, new: {newPos}. Zoom: {zoom}')
+
+    self.ui.topLeftXSliderWidget.setValue(self.ui.topLeftXSliderWidget.value + (10.0 / zoom) * (self.leftMouseButtonPos[0] - newPos[0]))
+    # In Slicer, Y coordinate points "up". In OpenSlide, Y points "down". That's why it is inverted here
+    self.ui.topLeftYSliderWidget.setValue(self.ui.topLeftYSliderWidget.value + (10.0 / zoom) * (newPos[1] - self.leftMouseButtonPos[1]))
 
     #self.ui.topLeftYSliderWidget.update()
 
@@ -1452,7 +1456,7 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
       return os.path.dirname(slicer.app.slicerUserSettingsFilePath) + '/OpenSlide'
 
   def getOpenSlideExecutableFilename(self):
-      return 'openslide.jar'
+      return 'libopenslide-1.dll'
 
   def findOpenSlide(self):
       # Try to find the executable at specific paths
@@ -1501,7 +1505,7 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
       openSlideTargetDirectory = self.getDownloadedOpenSlideDirectory()
       # The number in the filePath can be incremented each time a significantly different OpenSlide version
       # is to be introduced (it prevents reusing a previously downloaded package).
-      filePath = slicer.app.temporaryPath + '/OpenSlide-package-slicer-01.zip'
+      filePath = slicer.app.temporaryPath + '/openslide-bin-4.0.0.6-windows-x64.zip'
       success = self.unzipOpenSlide(filePath, openSlideTargetDirectory)
       if success:
           # there was a valid downloaded package already
@@ -1510,7 +1514,7 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
       # List of mirror sites to attempt download OpenSlide pre-built binaries from
       urls = []
       if os.name == 'nt':
-          urls.append('https://github.com/openslide/openslide-winbuild/releases/download/v20160612/openslide-win64-20160612.zip')
+          urls.append('https://github.com/openslide/openslide-bin/releases/download/v4.0.0.6/openslide-bin-4.0.0.6-windows-x64.zip')
       else:
           # TODO: implement downloading for Linux/MacOS?
           pass
