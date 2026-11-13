@@ -144,6 +144,8 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.H5FilePathname = ""
     self.h5FileLoaded = False
 
+    self._zoomAnchor = None
+
 
     # Interator
     layoutManager = slicer.app.layoutManager()
@@ -212,34 +214,109 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
   def onMouseWheelForwardEvent(self, obj, event=None):
-    print ('onMouseWheelForwardEvent............................')
-    if not self.ui.ObjectiveMagnificationSlicerWidget.isMaximized():
-      #self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value + 2.0*self.ui.ObjectiveMagnificationSlicerWidget.singleStep)
+    if self.ui.ObjectiveMagnificationSlicerWidget.isMaximized():
+      return
+    if not self.prepareZoomAtMouse():
+      return
 
-      # set the increment to be 1/2 of the current values accelerates
-      # the zooming well when the mag is large. It also make the
-      # zooming stable when the value is small. This is better than
-      # setting the increament to a fixed value
-      self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value + 0.5*self.ui.ObjectiveMagnificationSlicerWidget.value)
-
-      # If send this signal every time the slider changes, will trigger loading patch. This will make the zooming very slow
-      #self.ui.ObjectiveMagnificationSlicerWidget.valueChanged(self.ui.ObjectiveMagnificationSlicerWidget.value)
+    self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value + 0.5*self.ui.ObjectiveMagnificationSlicerWidget.value)
 
 
 
   def onMouseWheelBackwardEvent(self, obj, event=None):
-    print ('onMouseWheelBackwardEvent............................')
-    if not self.ui.ObjectiveMagnificationSlicerWidget.isMinimized():
-      #self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value - 2.0*self.ui.ObjectiveMagnificationSlicerWidget.singleStep)
+    if self.ui.ObjectiveMagnificationSlicerWidget.isMinimized():
+      return
+    if not self.prepareZoomAtMouse():
+      return
 
-      # set the increment to be 1/2 of the current values accelerates
-      # the zooming well when the mag is large. It also make the
-      # zooming stable when the value is small. This is better than
-      # setting the increament to a fixed value
-      self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value - 0.5*self.ui.ObjectiveMagnificationSlicerWidget.value)
+    self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value - 0.5*self.ui.ObjectiveMagnificationSlicerWidget.value)
 
-      # If send this signal every time the slider changes, will trigger loading patch. This will make the zooming very slow
-      #self.ui.ObjectiveMagnificationSlicerWidget.valueChanged(self.ui.ObjectiveMagnificationSlicerWidget.value)
+  def prepareZoomAtMouse(self):
+    if not self.BigRGBAImagePathname or self.patchSizeX <= 0 or self.patchSizeY <= 0:
+      return False
+    patchVolumeNode = getattr(self, 'patchVolumeNode', None)
+    if patchVolumeNode is None or patchVolumeNode.GetImageData() is None:
+      return False
+    objectiveMagnificationMax = getattr(self, 'objectiveMagnificationMax', 0)
+    if objectiveMagnificationMax <= 0:
+      return False
+
+    currentMagnification = float(self.ui.ObjectiveMagnificationSlicerWidget.value)
+    if currentMagnification <= 0:
+      return False
+
+    layoutManager = slicer.app.layoutManager()
+    redWidget = layoutManager.sliceWidget('Red')
+    redView = redWidget.sliceView()
+    interactor = redView.interactorStyle().GetInteractor()
+    displayPosition = interactor.GetEventPosition()
+    xyz = redView.convertDeviceToXYZ([int(displayPosition[0]), int(displayPosition[1])])
+    ras = redView.convertXYZToRAS(xyz)
+
+    ijkToRas = vtk.vtkMatrix4x4()
+    patchVolumeNode.GetIJKToRASMatrix(ijkToRas)
+    rasToIjk = vtk.vtkMatrix4x4()
+    vtk.vtkMatrix4x4.Invert(ijkToRas, rasToIjk)
+    ijk = rasToIjk.MultiplyPoint([ras[0], ras[1], ras[2], 1.0])
+
+    dimensions = patchVolumeNode.GetImageData().GetDimensions()
+    u = ijk[0] / float(dimensions[0])
+    v = ijk[1] / float(dimensions[1])
+    if not (0.0 <= u <= 1.0 and 0.0 <= v <= 1.0):
+      u = 0.5
+      v = 0.5
+
+    level = self.BigRGBAImageLevelToLoad
+    downsample = float(self.level_downsamples[level])
+    levelMagnification = objectiveMagnificationMax / downsample
+    ratio = levelMagnification / currentMagnification
+    spanX = round(self.patchSizeX * ratio) * downsample
+    spanY = round(self.patchSizeY * ratio) * downsample
+
+    topLeftX = int(self.ui.topLeftXSliderWidget.value)
+    topLeftY = int(self.ui.topLeftYSliderWidget.value)
+    effectiveTopLeftX = int(topLeftX / downsample) * downsample
+    effectiveTopLeftY = int(topLeftY / downsample) * downsample
+    anchorX = effectiveTopLeftX + u * spanX
+    anchorY = effectiveTopLeftY + v * spanY
+
+    self._zoomAnchor = (u, v, anchorX, anchorY)
+    return True
+
+  def applyZoomAtMouse(self):
+    if self._zoomAnchor is None:
+      return
+    u, v, anchorX, anchorY = self._zoomAnchor
+    self._zoomAnchor = None
+
+    magnification = float(self.ui.ObjectiveMagnificationSlicerWidget.value)
+    objectiveMagnificationMax = getattr(self, 'objectiveMagnificationMax', 0)
+    if magnification <= 0 or objectiveMagnificationMax <= 0:
+      return
+
+    level = self.BigRGBAImageLevelToLoad
+    downsample = float(self.level_downsamples[level])
+    levelMagnification = objectiveMagnificationMax / downsample
+    ratio = levelMagnification / magnification
+    spanX = round(self.patchSizeX * ratio) * downsample
+    spanY = round(self.patchSizeY * ratio) * downsample
+
+    topLeftX = anchorX - u * spanX
+    topLeftY = anchorY - v * spanY
+    topLeftX = round(topLeftX / downsample) * downsample
+    topLeftY = round(topLeftY / downsample) * downsample
+
+    xSlider = self.ui.topLeftXSliderWidget
+    ySlider = self.ui.topLeftYSliderWidget
+    topLeftX = min(max(topLeftX, xSlider.minimum), xSlider.maximum)
+    topLeftY = min(max(topLeftY, ySlider.minimum), ySlider.maximum)
+
+    xSlider.blockSignals(True)
+    ySlider.blockSignals(True)
+    xSlider.value = topLeftX
+    ySlider.value = topLeftY
+    xSlider.blockSignals(False)
+    ySlider.blockSignals(False)
 
 
 
@@ -540,6 +617,8 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     #print(self.BigRGBAImageLevelToLoad)
 
     self.updateUIWidget()
+
+    self.applyZoomAtMouse()
 
     self.loadPatchFromBigRGBAImage()
 
