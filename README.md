@@ -26,14 +26,7 @@ the BigImage extension could also be further extended by you.
 
 ## Installation
 
-On Windows, all required dependencies are automatically installed. On Linux and macOS OpenSlide must be installed manually as described below.
-
-### Linux
-
-You will need to **manually** install the openslide library to your OS. This can be done with, e.g.,
-```
-sudo apt install libopenslide0
-```
+Required Python packages (tiffslide, scikit-image) are installed automatically on first use.
 
 ## Modules
 This extension currently has two modules:
@@ -82,7 +75,7 @@ The extension contains an experimental module ([NgffImageIO](https://github.com/
 for reading [OME-NGFF](https://ngff.openmicroscopy.org/latest/) file format. Currently, only a simple image array can be saved and loaded
 in Zarr format (with the `.zarr` file extension, with `ZipStorage` class), but we do not follow the NGFF specification yet.
 
-This module may be used in the future instead of OpenSlide to make dependencies simpler, and to store more complete metadata.
+This module may be used in the future instead of tiffslide to make dependencies simpler, and to store more complete metadata.
 
 ## Citation
 

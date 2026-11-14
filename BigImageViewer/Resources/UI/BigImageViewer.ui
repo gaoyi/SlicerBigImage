@@ -220,31 +220,6 @@
     </widget>
    </item>
    <item>
-    <widget class="ctkCollapsibleButton" name="advancedCollapsibleButton">
-     <property name="text">
-      <string>Advanced</string>
-     </property>
-     <layout class="QFormLayout" name="formLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="OpenSlidePathLabel">
-        <property name="text">
-         <string>OpenSlide binary:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="ctkPathLineEdit" name="OpenSlidePathLineEdit">
-        <property name="nameFilters">
-         <stringlist>
-          <string>openslide.jar</string>
-         </stringlist>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>

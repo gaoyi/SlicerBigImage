@@ -146,6 +146,17 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self._zoomAnchor = None
 
+    self.patchVolumeNode = None
+    self.patchGrayVolumeNode = None
+    self.patchLabelVolumeNode = None
+
+    self.patchWsiOriginX = 0.0
+    self.patchWsiOriginY = 0.0
+    self.patchWsiScaleX = 1.0
+    self.patchWsiScaleY = 1.0
+    self.showWholeSlideOnLoad = False
+    self.initialMagnification = 1.0
+
 
     # Interator
     layoutManager = slicer.app.layoutManager()
@@ -266,19 +277,16 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       u = 0.5
       v = 0.5
 
-    level = self.BigRGBAImageLevelToLoad
-    downsample = float(self.level_downsamples[level])
-    levelMagnification = objectiveMagnificationMax / downsample
-    ratio = levelMagnification / currentMagnification
-    spanX = round(self.patchSizeX * ratio) * downsample
-    spanY = round(self.patchSizeY * ratio) * downsample
+    wsiWidth = float(self.WSISizesXAtAllLevels[0])
+    wsiHeight = float(self.WSISizesYAtAllLevels[0])
+    anchorX = self.patchWsiOriginX + ijk[0] * self.patchWsiScaleX
+    anchorY = self.patchWsiOriginY + ijk[1] * self.patchWsiScaleY
 
-    topLeftX = int(self.ui.topLeftXSliderWidget.value)
-    topLeftY = int(self.ui.topLeftYSliderWidget.value)
-    effectiveTopLeftX = int(topLeftX / downsample) * downsample
-    effectiveTopLeftY = int(topLeftY / downsample) * downsample
-    anchorX = effectiveTopLeftX + u * spanX
-    anchorY = effectiveTopLeftY + v * spanY
+    if not (0.0 <= anchorX <= wsiWidth and 0.0 <= anchorY <= wsiHeight):
+      u = 0.5
+      v = 0.5
+      anchorX = wsiWidth * 0.5
+      anchorY = wsiHeight * 0.5
 
     self._zoomAnchor = (u, v, anchorX, anchorY)
     return True
@@ -318,6 +326,50 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     xSlider.blockSignals(False)
     ySlider.blockSignals(False)
 
+  def getPatchNodeName(self, suffix):
+    base = os.path.splitext(os.path.basename(self.BigRGBAImagePathname))[0]
+    if not base:
+      base = "BigImage"
+    return "%s_%s" % (base, suffix)
+
+  def resetPatchNodeReferences(self):
+    self.patchVolumeNode = None
+    self.patchGrayVolumeNode = None
+    self.patchLabelVolumeNode = None
+    self._zoomAnchor = None
+    self.patchWsiOriginX = 0.0
+    self.patchWsiOriginY = 0.0
+    self.patchWsiScaleX = 1.0
+    self.patchWsiScaleY = 1.0
+    self.showWholeSlideOnLoad = False
+    hdf5File = getattr(self, 'hdf5File', None)
+    if hdf5File is not None:
+      try:
+        hdf5File.close()
+      except Exception:
+        pass
+      self.hdf5File = None
+    self.h5FileLoaded = False
+
+  def removePatchNodes(self):
+    sh = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+    for attr in ("patchVolumeNode", "patchGrayVolumeNode", "patchLabelVolumeNode"):
+      node = getattr(self, attr, None)
+      if node is None:
+        continue
+      if sh is not None:
+        itemID = sh.GetItemByDataNode(node)
+        if itemID:
+          sh.RemoveItem(itemID)
+      displayNode = node.GetDisplayNode()
+      displayNodeID = displayNode.GetID() if displayNode else None
+      slicer.mrmlScene.RemoveNode(node)
+      if displayNodeID:
+        displayNode = slicer.mrmlScene.GetNodeByID(displayNodeID)
+        if displayNode is not None:
+          slicer.mrmlScene.RemoveNode(displayNode)
+    self.resetPatchNodeReferences()
+
 
 
 
@@ -342,14 +394,6 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # Create logic class. Logic implements all computations that should be possible to run
     # in batch mode, without a graphical user interface.
     self.logic = BigImageViewerLogic()
-
-    if os.name == 'nt':
-      openSlidePath = self.logic.getOpenSlidePath()
-      self.ui.OpenSlidePathLineEdit.currentPath = openSlidePath
-    else:
-      self.ui.OpenSlidePathLineEdit.hide()
-      # There are no other advanced settings for now, so hide the whole section
-      self.ui.advancedCollapsibleButton.hide()
 
     self.wsiLevelToLoad = 0
 
@@ -418,7 +462,9 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # with the color image (ras)
 
     volumeNode = slicer.vtkMRMLScalarVolumeNode()
-    volumeNode.SetName("currentPatchGrayChannel")
+    volumeNode.SetName(self.getPatchNodeName("patch_gray"))
+    volumeNode.SetSaveWithScene(False)
+    volumeNode.SetHideFromEditors(True)
     volumeNode.SetSpacing(imageSpacing)
     volumeNode.SetIJKToRASDirectionMatrix(IJKToRASDirectionMatrix)
     volumeNode.SetAndObserveImageData(imageData)
@@ -426,13 +472,13 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     # Add volume to scene
     displayNode = slicer.vtkMRMLScalarVolumeDisplayNode()
+    displayNode.SetSaveWithScene(False)
 
     slicer.mrmlScene.AddNode(displayNode)
     #colorNode = slicer.util.getNode('Green')
     colorNode = slicer.util.getNode('Grey')
     displayNode.SetAndObserveColorNodeID(colorNode.GetID())
     volumeNode.SetAndObserveDisplayNodeID(displayNode.GetID())
-    volumeNode.CreateDefaultStorageNode()
 
     # store the loaded patch to widget member
     self.patchGrayVolumeNode = volumeNode
@@ -460,7 +506,9 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # with the color image (ras)
 
     volumeNode = slicer.vtkMRMLVectorVolumeNode()
-    volumeNode.SetName("currentPatchFromBigRGBAImage")
+    volumeNode.SetName(self.getPatchNodeName("patch_rgb"))
+    volumeNode.SetSaveWithScene(False)
+    volumeNode.SetHideFromEditors(True)
     volumeNode.SetSpacing(imageSpacing)
     volumeNode.SetIJKToRASDirectionMatrix(IJKToRASDirectionMatrix)
     volumeNode.SetAndObserveImageData(imageData)
@@ -468,12 +516,12 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     # Add volume to scene
     displayNode = slicer.vtkMRMLVectorVolumeDisplayNode()
+    displayNode.SetSaveWithScene(False)
     slicer.mrmlScene.AddNode(displayNode)
 
     colorNode = slicer.util.getNode('Grey')
     displayNode.SetAndObserveColorNodeID(colorNode.GetID())
     volumeNode.SetAndObserveDisplayNodeID(displayNode.GetID())
-    volumeNode.CreateDefaultStorageNode()
 
     # store the loaded patch to widget member
     self.patchVolumeNode = volumeNode
@@ -627,32 +675,36 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     #--------------------------------------------------------------------------------
     # Set the max of slider for top-left corner
-    # self.ui.topLeftXSliderWidget.value = self.topLeftX
-    # self.ui.topLeftYSliderWidget.value = self.topLeftY
-
-    self.ui.topLeftXSliderWidget.value = 0
-    self.ui.topLeftYSliderWidget.value = 0
-
-    self.ui.topLeftXSliderWidget.maximum = max(0, self.WSISizesXAtAllLevels[0] - self.patchSizeX*self.level_downsamples[self.BigRGBAImageLevelToLoad] - 1)
-    self.ui.topLeftYSliderWidget.maximum = max(0, self.WSISizesYAtAllLevels[0] - self.patchSizeY*self.level_downsamples[self.BigRGBAImageLevelToLoad] - 1)
-
-    self.ui.topLeftXSliderWidget.enabled = True
-    self.ui.topLeftYSliderWidget.enabled = True
+    for slider in (self.ui.topLeftXSliderWidget, self.ui.topLeftYSliderWidget):
+      slider.blockSignals(True)
+      slider.value = 0
+      slider.maximum = 0
+      slider.blockSignals(False)
+      slider.enabled = True
 
     #--------------------------------------------------------------------------------
     # Set the max of number of levels
-    self.ui.ObjectiveMagnificationSlicerWidget.maximum = self.objectiveMagnificationMax
-    self.ui.ObjectiveMagnificationSlicerWidget.minimum = self.objectiveMagnificationMin
-    self.ui.ObjectiveMagnificationSlicerWidget.value = 1.0
-    self.ui.ObjectiveMagnificationSlicerWidget.enabled = True
+    magnificationSlider = self.ui.ObjectiveMagnificationSlicerWidget
+    magnificationSlider.maximum = self.objectiveMagnificationMax
+    magnificationSlider.minimum = self.objectiveMagnificationMin
+    magnificationSlider.blockSignals(True)
+    magnificationSlider.value = self.initialMagnification
+    magnificationSlider.blockSignals(False)
+    magnificationSlider.enabled = True
+
+    self.showWholeSlideOnLoad = True
+    self.onWSILevelChanged()
 
 
   def updateUIWidget(self):
     # self.ui.topLeftXSliderWidget.value = self.topLeftX
     # self.ui.topLeftYSliderWidget.value = self.topLeftY
 
-    self.ui.topLeftXSliderWidget.maximum = max(0, self.WSISizesXAtAllLevels[0] - self.patchSizeX*self.level_downsamples[self.BigRGBAImageLevelToLoad] - 1)
-    self.ui.topLeftYSliderWidget.maximum = max(0, self.WSISizesYAtAllLevels[0] - self.patchSizeY*self.level_downsamples[self.BigRGBAImageLevelToLoad] - 1)
+    magnification = float(self.ui.ObjectiveMagnificationSlicerWidget.value)
+    if magnification > 0:
+      downsample = self.objectiveMagnificationMax / magnification
+      self.ui.topLeftXSliderWidget.maximum = max(0, self.WSISizesXAtAllLevels[0] - self.patchSizeX*downsample - 1)
+      self.ui.topLeftYSliderWidget.maximum = max(0, self.WSISizesYAtAllLevels[0] - self.patchSizeY*downsample - 1)
 
     #self.ui.ObjectiveMagnificationSlicerWidget.maximum = self.BigRGBAImageNumberOfLevels - 1
 
@@ -669,6 +721,37 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     slide.close()
 
     return imRGBNdarray
+
+  def getWholeSlidePatch(self):
+    from PIL import Image
+
+    level = self.BigRGBAImageLevelToLoad
+    downsample = float(self.level_downsamples[level])
+    levelWidth = int(self.WSISizesXAtAllLevels[level])
+    levelHeight = int(self.WSISizesYAtAllLevels[level])
+    q = self.getRegionFromFileAsRGBNumpyArray(self.BigRGBAImagePathname, level, 0, 0, levelWidth, levelHeight)
+
+    wsiWidth = float(self.WSISizesXAtAllLevels[0])
+    wsiHeight = float(self.WSISizesYAtAllLevels[0])
+    scale = min(float(self.patchSizeX)/wsiWidth, float(self.patchSizeY)/wsiHeight)
+    displayWidth = max(1, int(round(wsiWidth*scale)))
+    displayHeight = max(1, int(round(wsiHeight*scale)))
+
+    resample = getattr(Image, 'Resampling', Image).LANCZOS
+    resized = numpy.asarray(Image.fromarray(q).resize((displayWidth, displayHeight), resample))
+    p = numpy.full((self.patchSizeY, self.patchSizeX, 3), 255, dtype=numpy.uint8)
+    offsetX = int((self.patchSizeX - displayWidth)/2)
+    offsetY = int((self.patchSizeY - displayHeight)/2)
+    p[offsetY:offsetY+displayHeight, offsetX:offsetX+displayWidth, :] = resized
+
+    self.patchWsiScaleX = (levelWidth*downsample) / float(displayWidth)
+    self.patchWsiScaleY = (levelHeight*downsample) / float(displayHeight)
+    self.patchWsiOriginX = -offsetX*self.patchWsiScaleX
+    self.patchWsiOriginY = -offsetY*self.patchWsiScaleY
+
+    self.topLeftX = 0
+    self.topLeftY = 0
+    return p
 
   def loadPatchFromBigRGBAImage(self):
     import skimage
@@ -691,30 +774,40 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # print(int(self.patchSizeY))
 
 
-    magAtThisLevel = float(self.slideInfo["objectiveMagnification"])/float(self.level_downsamples[self.BigRGBAImageLevelToLoad])
+    magnification = float(self.ui.ObjectiveMagnificationSlicerWidget.value)
+    atWholeSlideView = (self.initialMagnification > 0
+                        and magnification <= self.initialMagnification*(1.0 + 1e-6))
 
-    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    # print(self.ui.ObjectiveMagnificationSlicerWidget.value)
-    ratio = magAtThisLevel/float(self.ui.ObjectiveMagnificationSlicerWidget.value)
-    # print(ratio)
-    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    if self.showWholeSlideOnLoad or atWholeSlideView:
+      self.showWholeSlideOnLoad = False
+      for slider in (self.ui.topLeftXSliderWidget, self.ui.topLeftYSliderWidget):
+        slider.blockSignals(True)
+        slider.value = 0
+        slider.blockSignals(False)
+      p = self.getWholeSlidePatch()
+      ratio = 1.0
+    else:
+      magAtThisLevel = float(self.slideInfo["objectiveMagnification"])/float(self.level_downsamples[self.BigRGBAImageLevelToLoad])
+      ratio = magAtThisLevel/float(self.ui.ObjectiveMagnificationSlicerWidget.value)
 
-    sizeToLoadX = round(self.patchSizeX*ratio)
-    sizeToLoadY = round(self.patchSizeY*ratio)
+      sizeToLoadX = round(self.patchSizeX*ratio)
+      sizeToLoadY = round(self.patchSizeY*ratio)
 
-    self.topLeftX = int(self.ui.topLeftXSliderWidget.value)
+      self.topLeftX = int(self.ui.topLeftXSliderWidget.value)
+      self.topLeftY = int(self.ui.topLeftYSliderWidget.value)
 
-    #print("RGB requested size = ", (sizeToLoadY, sizeToLoadX))
-    q = self.getRegionFromFileAsRGBNumpyArray(self.BigRGBAImagePathname, self.BigRGBAImageLevelToLoad, int(self.ui.topLeftXSliderWidget.value), int(self.ui.topLeftYSliderWidget.value), int(sizeToLoadX), int(sizeToLoadY))
+      q = self.getRegionFromFileAsRGBNumpyArray(self.BigRGBAImagePathname, self.BigRGBAImageLevelToLoad, int(self.ui.topLeftXSliderWidget.value), int(self.ui.topLeftYSliderWidget.value), int(sizeToLoadX), int(sizeToLoadY))
 
-    # print(q.max())
+      p = skimage.transform.resize(q, (int(self.patchSizeY), int(self.patchSizeX)), preserve_range=True, mode='wrap', order=0, anti_aliasing=False)
 
-    p = skimage.transform.resize(q, (int(self.patchSizeY), int(self.patchSizeX)), preserve_range=True, mode='wrap', order=0, anti_aliasing=False)
-    #print("RGB Got size = ", q.shape, "resize to ", p.shape, q.shape[0]/p.shape[0], q.shape[1]/p.shape[1])
-    # print(p.max())
+      downsample = float(self.level_downsamples[self.BigRGBAImageLevelToLoad])
+      self.patchWsiScaleX = (sizeToLoadX*downsample) / float(self.patchSizeX)
+      self.patchWsiScaleY = (sizeToLoadY*downsample) / float(self.patchSizeY)
+      self.patchWsiOriginX = int(self.topLeftX / downsample) * downsample
+      self.patchWsiOriginY = int(self.topLeftY / downsample) * downsample
 
     #a = slicer.util.array('currentPatchFromBigRGBAImage')
-    volumeNode = slicer.util.getNode('currentPatchFromBigRGBAImage')
+    volumeNode = self.patchVolumeNode
     a = slicer.util.arrayFromVolume(volumeNode)
 
     # resizing is needed for python (not for CLI version) coz we have
@@ -724,10 +817,14 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     resolutionNow = self.MPP/1000.0*float(self.slideInfo["objectiveMagnification"])/float(self.ui.ObjectiveMagnificationSlicerWidget.value)
     imageSpacing = [resolutionNow, resolutionNow, self.SliceThickness]
 
-    n = slicer.util.getNode('currentPatchFromBigRGBAImage')
+    n = self.patchVolumeNode
     n.SetSpacing(imageSpacing)
 
     n.GetImageData().Modified()
+
+    displayNode = n.GetDisplayNode()
+    if displayNode is not None:
+      displayNode.Modified()
 
     #--------------------------------------------------------------------------------
     # Load label image
@@ -910,8 +1007,21 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     redWidget = lm.sliceWidget('Red')
     redView = redWidget.sliceView()
 
-    self.patchSizeX = int(redView.width/2)
-    self.patchSizeY = int(redView.height/2)
+    self.patchSizeX = max(1, int(redView.width/2))
+    self.patchSizeY = max(1, int(redView.height/2))
+
+    if not self.WSISizesXAtAllLevels or not self.WSISizesYAtAllLevels:
+      return
+
+    wsiWidth = float(self.WSISizesXAtAllLevels[0])
+    wsiHeight = float(self.WSISizesYAtAllLevels[0])
+    scale = min(self.patchSizeX / wsiWidth, self.patchSizeY / wsiHeight)
+    wholeSlideDownsample = 1.0 / scale
+
+    self.initialMagnification = min(self.objectiveMagnificationMax,
+                                    self.objectiveMagnificationMax / wholeSlideDownsample)
+    self.objectiveMagnificationMin = min(self.objectiveMagnificationMin,
+                                         self.initialMagnification)
 
     return
 
@@ -926,6 +1036,8 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.level_downsamples = self.slideInfo["level_downsamples"]
     self.MPP = self.slideInfo["mpp"][0]
 
+    self.WSISizesXAtAllLevels = []
+    self.WSISizesYAtAllLevels = []
     for it in range(self.BigRGBAImageNumberOfLevels):
       self.WSISizesXAtAllLevels.append(self.slideInfo["level_dimensions"][it][0])
       self.WSISizesYAtAllLevels.append(self.slideInfo["level_dimensions"][it][1])
@@ -950,27 +1062,6 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def onLoadWSIMetaInfoButton(self):
 
-    # For now OpenSlide is only installed on Windows
-    if os.name == 'nt':
-      self.logic.setOpenSlidePath(self.ui.OpenSlidePathLineEdit.currentPath)
-      if not self.logic.isOpenSlidePathValid():
-        self.logic.findOpenSlide()
-        if not self.logic.isOpenSlidePathValid() and os.name == 'nt':  # TODO: implement download for Linux/MacOS?
-          # OpenSlide not found, offer downloading it
-          if slicer.util.confirmOkCancelDisplay(
-              'OpenSlide not detected on your system. '
-              'Download OpenSlide library?',
-                  windowTitle='Download confirmation'):
-              if not self.logic.openSlideDownload():
-                  slicer.util.errorDisplay("OpenSlide download failed")
-      if not self.logic.isOpenSlidePathValid():
-          # still not found, user has to specify path manually
-          self.advancedCollapsibleButton.collapsed = False
-          return
-      self.ui.OpenSlidePathLineEdit.currentPath = self.logic.getOpenSlidePath()
-
-    self.determinPatchSizeByViewerSize()
-
     #--------------------------------------------------------------------------------
     # Read meta infrom from WSI image
     #if self.BigRGBAImageFileNameEditor.currentPath and os.path.isfile(self.ui.BigRGBAImageFileNameEditor.currentPath):
@@ -981,21 +1072,12 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.logic.installPreRequisites()
 
     self.BigRGBAImagePathname = self.ui.BigRGBAImageFileNameEditor.currentPath
+    self.removePatchNodes()
     self.getMetaInfoFromWSI()
+    self.determinPatchSizeByViewerSize()
 
     self.setupVolumeNodeToStoreRGBPatch()
     self.setupForScalarPatch()
-
-    # Setting the magnification slide bar will automatically trigger
-    # the onWSILevelChanged in which will call the
-    # loadPatchFromBigRGBAImage
-    #self.ui.ObjectiveMagnificationSlicerWidget.value = self.objectiveMagnificationMax
-    self.ui.ObjectiveMagnificationSlicerWidget.value = self.objectiveMagnificationMin
-
-    # Setting the magnification slide bar will automatically trigger
-    # the onWSILevelChanged in which will call the
-    # loadPatchFromBigRGBAImage. So no need to do again
-    # self.loadPatchFromBigRGBAImage()
 
     self.enableAndInitUIWidget()
 
@@ -1013,9 +1095,9 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     parameters['outputVolume'] = self.patchGrayVolumeNode.GetID()
     slicer.cli.run( slicer.modules.colordecomposition, None, parameters, wait_for_completion=True )
 
-    volumeNode = slicer.util.getNode('currentPatchGrayChannel') #self.patchGrayVolumeNode
+    volumeNode = self.patchGrayVolumeNode
     slicer.util.setSliceViewerLayers(foreground=volumeNode)
-    volumeNode1 = slicer.util.getNode('currentPatchFromBigRGBAImage') #self.patchVolumeNode
+    volumeNode1 = self.patchVolumeNode
     slicer.util.setSliceViewerLayers(background = volumeNode1)
 
     slicer.util.setSliceViewerLayers(foregroundOpacity=0.4)
@@ -1028,9 +1110,9 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.logic.installPreRequisites()
     self.logic.processSegmentGland(self.patchVolumeNode, self.patchGrayVolumeNode, self.kerasModelSegmentColonGland)
 
-    volumeNode = slicer.util.getNode('currentPatchGrayChannel')
+    volumeNode = self.patchGrayVolumeNode
     slicer.util.setSliceViewerLayers(foreground=volumeNode)
-    volumeNode1 = slicer.util.getNode('currentPatchFromBigRGBAImage')
+    volumeNode1 = self.patchVolumeNode
     slicer.util.setSliceViewerLayers(background = volumeNode1)
 
     slicer.util.setSliceViewerLayers(foregroundOpacity=0.4)
@@ -1045,7 +1127,7 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     slicer.mrmlScene.AddNode( nucleusLabelImageNode )
     #parameters['outputAxisMaskVolume'] =
 
-    volumeNode = slicer.util.getNode('currentPatchGrayChannel')
+    volumeNode = self.patchGrayVolumeNode
     #slicer.util.setSliceViewerLayers(foreground=volumeNode)
 
     parameters = {}
@@ -1070,7 +1152,7 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     # volumeNode = slicer.util.getNode('currentPatchGrayChannel')
     # slicer.util.setSliceViewerLayers(foreground=volumeNode)
-    volumeNode1 = slicer.util.getNode('currentPatchFromBigRGBAImage')
+    volumeNode1 = self.patchVolumeNode
     slicer.util.setSliceViewerLayers(background = volumeNode1)
 
     slicer.util.getNode('vtkMRMLSliceNodeRed').SetUseLabelOutline(1)
@@ -1120,6 +1202,7 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     """
     # Parameter node will be reset, do not use it anymore
     self.setParameterNode(None)
+    self.resetPatchNodeReferences()
 
   def onSceneEndClose(self, caller, event):
     """
@@ -1271,11 +1354,6 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
     homeDir = expanduser("~")
 
     try:
-        import openslide
-    except ImportError:
-        slicer.util.pip_install("openslide-python")
-
-    try:
         import skimage
     except ImportError:
         slicer.util.pip_install("scikit-image")
@@ -1299,10 +1377,6 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
     #     slicer.util.pip_install("keras")
 
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-    if os.name == 'nt':
-      import os
-      os.add_dll_directory(os.path.dirname(self.getOpenSlidePath()))
 
 
 
@@ -1335,9 +1409,11 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
     # 放大倍数
     info["objectiveMagnification"] = 20.0
     try:
-        obj = slide.properties.get("tiffslide.objective", 20.0)
+        obj = slide.properties.get("tiffslide.objective-power", None)
+        if obj is None:
+            obj = slide.properties.get("openslide.objective-power", 20.0)
         info["objectiveMagnification"] = float(obj)
-    except:
+    except Exception:
         pass
 
     slide.close()
@@ -1412,7 +1488,7 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
 
     ################################################################################
     # keras seg
-    imgArray = slicer.util.array("currentPatchFromBigRGBAImage")
+    imgArray = slicer.util.arrayFromVolume(inputVolume)
     imgArray = imgArray[0, :, :, :]
 
     testImgSeg = self.segment2DRGBImageRandomSampleDividePrior(model = kerasModel, imageArray = imgArray.astype(numpy.float), patchSideLen = 64, numPatchSampleFactor = 5, batch_size = 10)
@@ -1466,7 +1542,7 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
 
     ################################################################################
     # keras seg
-    imgArray = slicer.util.array("currentPatchFromBigRGBAImage")
+    imgArray = slicer.util.arrayFromVolume(inputVolume)
     imgArray = imgArray[0, :, :, :]
 
     testImgSeg = self.segment2DRGBImageRandomSampleDividePrior(model = kerasModel, imageArray = imgArray.astype(numpy.float), patchSideLen = 64, numPatchSampleFactor = 5, batch_size = 10)
@@ -1521,116 +1597,6 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
     stopTime = time.time()
     logging.info(f'Processing completed in {stopTime-startTime:.2f} seconds')
 
-
-  def isOpenSlidePathValid(self):
-      import os
-      openSlidePath = self.getOpenSlidePath()
-      return os.path.isfile(openSlidePath)
-
-  def getDownloadedOpenSlideDirectory(self):
-      return os.path.dirname(slicer.app.slicerUserSettingsFilePath) + '/OpenSlide'
-
-  def getOpenSlideExecutableFilename(self):
-      return 'openslide.jar'
-
-  def findOpenSlide(self):
-      # Try to find the executable at specific paths
-      commonOpenSlidePaths = [
-          '/usr/local/bin/openslide',
-          '/usr/bin/openslide'
-      ]
-      for openSlidePath in commonOpenSlidePaths:
-          if os.path.isfile(openSlidePath):
-              # found one
-              self.setOpenSlidePath(openSlidePath)
-              return True
-      # Search for the executable in directories
-      commonOpenSlideDirs = [
-          self.getDownloadedOpenSlideDirectory()
-      ]
-      for openSlideDir in commonOpenSlideDirs:
-          if self.findOpenSlideInDirectory(openSlideDir):
-              # found it
-              return True
-      # Not found
-      return False
-
-  def findOpenSlideInDirectory(self, openSlideDir):
-      openSlideExecutableFilename = self.getOpenSlideExecutableFilename()
-      for dirpath, dirnames, files in os.walk(openSlideDir):
-          for name in files:
-              if name == openSlideExecutableFilename:
-                  openSlideExecutablePath = (dirpath + '/' + name).replace('\\', '/')
-                  self.setOpenSlidePath(openSlideExecutablePath)
-                  return True
-      return False
-
-  def unzipOpenSlide(self, filePath, openSlideTargetDirectory):
-      if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-          logging.info('openSlide package is not found at ' + filePath)
-          return False
-
-      logging.info('Unzipping OpenSlide package ' + filePath)
-      qt.QDir().mkpath(openSlideTargetDirectory)
-      slicer.app.applicationLogic().Unzip(filePath, openSlideTargetDirectory)
-      success = self.findOpenSlideInDirectory(openSlideTargetDirectory)
-      return success
-
-  def openSlideDownload(self):
-      openSlideTargetDirectory = self.getDownloadedOpenSlideDirectory()
-      # The number in the filePath can be incremented each time a significantly different OpenSlide version
-      # is to be introduced (it prevents reusing a previously downloaded package).
-      filePath = slicer.app.temporaryPath + '/OpenSlide-package-slicer-01.zip'
-      success = self.unzipOpenSlide(filePath, openSlideTargetDirectory)
-      if success:
-          # there was a valid downloaded package already
-          return True
-
-      # List of mirror sites to attempt download OpenSlide pre-built binaries from
-      urls = []
-      if os.name == 'nt':
-          urls.append('https://github.com/openslide/openslide-winbuild/releases/download/v20160612/openslide-win64-20160612.zip')
-      else:
-          # TODO: implement downloading for Linux/MacOS?
-          pass
-
-      success = False
-      qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-
-      for url in urls:
-
-          success = True
-          try:
-              logging.info('Requesting download OpenSlide from %s...' % url)
-              import urllib.request, urllib.error, urllib.parse
-              req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-              data = urllib.request.urlopen(req).read()
-              with open(filePath, "wb") as f:
-                  f.write(data)
-
-              success = self.unzipOpenSlide(filePath, openSlideTargetDirectory)
-          except:
-              success = False
-
-          if success:
-              break
-
-      qt.QApplication.restoreOverrideCursor()
-      return success
-
-  def getOpenSlidePath(self):
-      settings = qt.QSettings()
-      if settings.contains('BigImage/OpenSlidePath'):
-          return slicer.app.toSlicerHomeAbsolutePath(settings.value('BigImage/OpenSlidePath'))
-      return ''
-
-  def setOpenSlidePath(self, openSlidePath):
-      # don't save it if already saved
-      settings = qt.QSettings()
-      if settings.contains('BigImage/OpenSlidePath'):
-          if openSlidePath == slicer.app.toSlicerHomeAbsolutePath(settings.value('BigImage/OpenSlidePath')):
-              return
-      settings.setValue('BigImage/OpenSlidePath', slicer.app.toSlicerHomeRelativePath(openSlidePath))
 
 #
 # BigImageViewerTest
