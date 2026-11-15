@@ -141,14 +141,10 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.WSISizesXAtAllLevels = []
     self.WSISizesYAtAllLevels = []
 
-    self.H5FilePathname = ""
-    self.h5FileLoaded = False
-
     self._zoomAnchor = None
 
     self.patchVolumeNode = None
     self.patchGrayVolumeNode = None
-    self.patchLabelVolumeNode = None
 
     self.patchWsiOriginX = 0.0
     self.patchWsiOriginY = 0.0
@@ -225,22 +221,33 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
   def onMouseWheelForwardEvent(self, obj, event=None):
-    if self.ui.ObjectiveMagnificationSlicerWidget.isMaximized():
-      return
-    if not self.prepareZoomAtMouse():
-      return
-
-    self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value + 0.5*self.ui.ObjectiveMagnificationSlicerWidget.value)
+    if not self.ui.ObjectiveMagnificationSlicerWidget.isMaximized() and self.prepareZoomAtMouse():
+      self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value + 0.5*self.ui.ObjectiveMagnificationSlicerWidget.value)
+    self.scheduleRedViewFit()
 
 
 
   def onMouseWheelBackwardEvent(self, obj, event=None):
-    if self.ui.ObjectiveMagnificationSlicerWidget.isMinimized():
-      return
-    if not self.prepareZoomAtMouse():
-      return
+    if not self.ui.ObjectiveMagnificationSlicerWidget.isMinimized() and self.prepareZoomAtMouse():
+      self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value - 0.5*self.ui.ObjectiveMagnificationSlicerWidget.value)
+    self.scheduleRedViewFit()
 
-    self.ui.ObjectiveMagnificationSlicerWidget.setValue(self.ui.ObjectiveMagnificationSlicerWidget.value - 0.5*self.ui.ObjectiveMagnificationSlicerWidget.value)
+  def scheduleRedViewFit(self):
+    if self.patchVolumeNode is None:
+      return
+    qt.QTimer.singleShot(0, self.fitRedViewToBackground)
+
+  def fitRedViewToBackground(self):
+    if self.patchVolumeNode is None:
+      return
+    layoutManager = slicer.app.layoutManager()
+    if layoutManager is None:
+      return
+    redWidget = layoutManager.sliceWidget('Red')
+    if redWidget is None:
+      return
+    redWidget.sliceController().fitSliceToBackground()
+    redWidget.sliceView().forceRender()
 
   def prepareZoomAtMouse(self):
     if not self.BigRGBAImagePathname or self.patchSizeX <= 0 or self.patchSizeY <= 0:
@@ -335,25 +342,16 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def resetPatchNodeReferences(self):
     self.patchVolumeNode = None
     self.patchGrayVolumeNode = None
-    self.patchLabelVolumeNode = None
     self._zoomAnchor = None
     self.patchWsiOriginX = 0.0
     self.patchWsiOriginY = 0.0
     self.patchWsiScaleX = 1.0
     self.patchWsiScaleY = 1.0
     self.showWholeSlideOnLoad = False
-    hdf5File = getattr(self, 'hdf5File', None)
-    if hdf5File is not None:
-      try:
-        hdf5File.close()
-      except Exception:
-        pass
-      self.hdf5File = None
-    self.h5FileLoaded = False
 
   def removePatchNodes(self):
     sh = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
-    for attr in ("patchVolumeNode", "patchGrayVolumeNode", "patchLabelVolumeNode"):
+    for attr in ("patchVolumeNode", "patchGrayVolumeNode"):
       node = getattr(self, attr, None)
       if node is None:
         continue
@@ -402,12 +400,12 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.loadWSIMetaInfoButton.connect('clicked(bool)', self.onLoadWSIMetaInfoButton)
 
     #self.loadBigRGBAImageButton.connect('clicked(bool)', self.onLoadBigRGBAImageButton)
-    self.ui.loadH5FileButton.connect('clicked(bool)', self.onLoadH5FileButton)
 
     self.ui.topLeftXSliderWidget.connect("valueChanged(double)", self.loadPatchFromBigRGBAImage)
     self.ui.topLeftYSliderWidget.connect("valueChanged(double)", self.loadPatchFromBigRGBAImage)
 
     self.ui.ObjectiveMagnificationSlicerWidget.connect("valueChanged(double)", self.onWSILevelChanged)
+    self.ui.extractHematoxylinOnFlyCheckBox.connect("toggled(bool)", self.onExtractHematoxylinOnFlyToggled)
 
     self.ui.segmentNucleiButton.connect('clicked(bool)', self.onSegmentNucleiButton)
     self.ui.decomposeStainButton.connect('clicked(bool)', self.onDecomposeStainButton)
@@ -535,104 +533,8 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # This will select the RGB patch to the bacgkround of the Red view
     selectionNode.SetReferenceActiveVolumeID(self.patchVolumeNode.GetID())
 
-    # This will select the label mask to the label of the Red
-    # view. Without this line, the label node will be in slicer but
-    # not selected. You need to manually pick everytime
-    #selectionNode.SetReferenceActiveLabelVolumeID(self.patchLabelVolumeNode.GetID())
     slicer.app.applicationLogic().PropagateVolumeSelection(0)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-  def setupForLoadingPatchFromH5File(self):
-
-    if self.ui.H5FileFileNameEditor.currentPath and os.path.isfile(self.ui.H5FileFileNameEditor.currentPath):
-      self.ui.H5FilePathname = self.ui.H5FileFileNameEditor.currentPath
-
-      #--------------------------------------------------------------------------------
-      # Read some meta info from H5File to populate slicer UI
-
-      # self.H5FileLoader.SetH5FileFileName(self.H5FilePathname)
-      # self.H5FileLoader.Initialization()
-
-      # self.H5FileNumberOfLevels = self.H5FileLoader.GetH5FileLevel()
-      # self.H5FileSizeX0 = self.H5FileLoader.GetSizeX0()
-      # self.H5FileSizeY0 = self.H5FileLoader.GetSizeY0()
-      # self.MPP = self.H5FileLoader.GetMPP()
-
-      self.hdf5File = h5py.File(self.H5FilePathname, 'r')
-
-      # #--------------------------------------------------------------------------------
-      # # Read UI info to determine the patch size to be extracted
-      # lm = slicer.app.layoutManager()
-      # redWidget = lm.sliceWidget('Red')
-      # redView = redWidget.sliceView()
-
-      # self.patchSizeX = redView.width
-      # self.patchSizeY = redView.height
-
-      imageSize = [self.patchSizeX, self.patchSizeY, 1]
-      imageSpacing = [self.MPP/1000., self.MPP/1000., self.SliceThickness]
-      voxelType = vtk.VTK_UNSIGNED_CHAR
-
-      #--------------------------------------------------------------------------------
-      # Allocate space and create node to store the label patch
-      labelImageData = vtk.vtkImageData()
-      labelImageData.SetDimensions(imageSize)
-      labelImageData.AllocateScalars(voxelType, 1)
-
-      IJKToRASDirectionMatrix = vtk.vtkMatrix4x4()
-      IJKToRASDirectionMatrix.SetElement(0, 0, -1)
-      IJKToRASDirectionMatrix.SetElement(1, 1, -1)
-      # now input patch is using LPS (which does not make sense for
-      # 2D image....... but in CLI for color decomposition, the ITK
-      # image is by default LPS. so the output image is not aligned
-      # with the color image (ras)
-
-      labelNode = slicer.vtkMRMLLabelMapVolumeNode()
-      labelNode.SetName("currentPatchFromH5File-label")
-      labelNode.SetSpacing(imageSpacing)
-      labelNode.SetIJKToRASDirectionMatrix(IJKToRASDirectionMatrix)
-      labelNode.SetAndObserveImageData(labelImageData)
-      slicer.mrmlScene.AddNode(labelNode)
-
-      a = slicer.util.array("currentPatchFromH5File-label")
-      a[:] = 0
-
-      # Add volume to scene
-      labelDisplayNode = slicer.vtkMRMLLabelMapVolumeDisplayNode()
-      slicer.mrmlScene.AddNode(labelDisplayNode)
-      #labelColorNode = slicer.util.getNode('Random')
-      labelColorNode = slicer.util.getNode('GenericColors')
-      labelDisplayNode.SetAndObserveColorNodeID(labelColorNode.GetID())
-      labelNode.SetAndObserveDisplayNodeID(labelDisplayNode.GetID())
-      labelNode.CreateDefaultStorageNode()
-
-      red_logic = slicer.app.layoutManager().sliceWidget("Red").sliceLogic()
-      red_cn = red_logic.GetSliceCompositeNode()
-      red_cn.SetLabelVolumeID(labelNode.GetID())
-
-      # store the loaded label patch to widget member
-      self.patchLabelVolumeNode = labelNode
-
-
-      #--------------------------------------------------------------------------------
-      # Set the patch volume to H5File loader so it knows where to store
-      # patch data
-      #self.H5FileLoader.SetOutputPatchImage(self.patchLabelVolumeNode.GetImageData())
-
-      selectionNode = slicer.app.applicationLogic().GetSelectionNode()
-
-      # This will select the RGB patch to the bacgkround of the Red view
-      #selectionNode.SetReferenceActiveVolumeID(self.patchVolumeNode.GetID())
-
-      # This will select the label mask to the label of the Red
-      # view. Without this line, the label node will be in slicer but
-      # not selected. You need to manually pick everytime
-      selectionNode.SetReferenceActiveLabelVolumeID(self.patchLabelVolumeNode.GetID())
-      slicer.app.applicationLogic().PropagateVolumeSelection(0)
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
 
 
   def cleanup(self):
@@ -827,70 +729,9 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       displayNode.Modified()
 
     #--------------------------------------------------------------------------------
-    # Load label image
-    if self.h5FileLoaded:
-      group = self.hdf5File[self.ui.h5DatasetOption.currentText]
-
-      dsetName = "data" + str(self.BigRGBAImageLevelToLoad)
-      dset = group[dsetName]
-
-      start0 = int(round(self.ui.topLeftYSliderWidget.value/self.level_downsamples[self.BigRGBAImageLevelToLoad]))
-      start1 = int(round(self.ui.topLeftXSliderWidget.value/self.level_downsamples[self.BigRGBAImageLevelToLoad]))
-      size0 = int(round(self.patchSizeY*ratio))
-      size1 = int(round(self.patchSizeX*ratio))
-
-      # print(dsetName)
-      # print((start0, start1))
-      #print(size1)
-
-      #print("requested size = ", (size0, size1))
-
-      labelArrayInLevel = dset[start0:(start0 + size0), start1:(start1 + size1)]
-      #print("max label labelArrayInLevel = " + str(labelArrayInLevel.max()))
-
-      #---------------------------------------------------------------
-      # When at the borader, when requested region is to the right or
-      # below the read image, the openslide returns an array the same
-      # size as the requested size. But h5 only return the intersected
-      # region. So the return image size is smaller than the requested
-      # size. If not padded first, the subsequent resize will stretch
-      # the label image
-      if labelArrayInLevel.shape != (size0, size1):
-        tmp = numpy.zeros((size0, size1))
-        tmp[:labelArrayInLevel.shape[0], :labelArrayInLevel.shape[1]] = labelArrayInLevel
-        labelArrayInLevel = tmp
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-      labelArray = skimage.transform.resize(labelArrayInLevel, (int(self.patchSizeY), int(self.patchSizeX)), preserve_range=True, mode='wrap', order=0, anti_aliasing=False)
-      #print("got size = ", labelArrayInLevel.shape, "resize to = ", labelArray.shape, "ratio = ", labelArrayInLevel.shape[0]/labelArray.shape[0], labelArrayInLevel.shape[1]/labelArray.shape[1])
-      #print("max label labelArray = " + str(labelArray.max()))
-
-      #labelArray = dset[int(self.ui.topLeftYSliderWidget.value):int(self.ui.topLeftYSliderWidget.value + self.patchSizeY), int(self.ui.topLeftXSliderWidget.value):int(self.ui.topLeftXSliderWidget.value + self.patchSizeX)]
-
-      # print(self.ui.topLeftXSliderWidget.value, self.ui.topLeftXSliderWidget.value, self.patchSizeX, self.patchSizeY)
-      # print(labelArray.max())
-
-      # labelArray = numpy.zeros((self.patchSizeY, self.patchSizeX), dtype='uint8')
-      # labelArray[int(self.patchSizeY/3):int(2*self.patchSizeY/3), int(self.patchSizeX/3):int(2*self.patchSizeX/3)] = 1
-
-      n = slicer.util.getNode('currentPatchFromH5File-label')
-      a = slicer.util.array('currentPatchFromH5File-label')
-      a[:] = labelArray
-
-      n.SetSpacing(imageSpacing)
-      n.GetImageData().Modified()
-
-      b = slicer.util.array('currentPatchFromH5File-label')
-
-      self.patchLabelVolumeNode.GetImageData().Modified()
-
-    #--------------------------------------------------------------------------------
     # If need
     if self.ui.extractHematoxylinOnFlyCheckBox.checked:
-      parameters = {}
-      parameters['inputVolume'] = self.patchVolumeNode.GetID()
-      parameters['outputVolume'] = self.patchGrayVolumeNode.GetID()
-      slicer.cli.run( slicer.modules.colordecomposition, None, parameters, wait_for_completion=True )
+      self.updateHematoxylinOnFlyLayers(True)
 
 
 
@@ -1089,6 +930,35 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
 
+  def updateHematoxylinOnFlyLayers(self, extractHematoxylin):
+    if not self.patchVolumeNode or not self.patchGrayVolumeNode:
+      return
+
+    if extractHematoxylin:
+      parameters = {}
+      parameters['inputVolume'] = self.patchVolumeNode.GetID()
+      parameters['outputVolume'] = self.patchGrayVolumeNode.GetID()
+      slicer.cli.run( slicer.modules.colordecomposition, None, parameters,
+                      wait_for_completion=True, update_display=False )
+
+      displayNode = self.patchGrayVolumeNode.GetDisplayNode()
+      if displayNode is not None:
+        displayNode.Modified()
+
+      slicer.util.setSliceViewerLayers(background=self.patchVolumeNode,
+                                       foreground=self.patchGrayVolumeNode,
+                                       foregroundOpacity=1.0)
+    else:
+      slicer.util.setSliceViewerLayers(background=self.patchVolumeNode,
+                                       foreground=None)
+
+    redWidget = slicer.app.layoutManager().sliceWidget('Red')
+    redWidget.sliceController().fitSliceToBackground()
+    redWidget.sliceView().forceRender()
+
+  def onExtractHematoxylinOnFlyToggled(self, checked):
+    self.updateHematoxylinOnFlyLayers(checked)
+
   def onDecomposeStainButton(self):
     parameters = {}
     parameters['inputVolume'] = self.patchVolumeNode.GetID()
@@ -1158,36 +1028,6 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     slicer.util.getNode('vtkMRMLSliceNodeRed').SetUseLabelOutline(1)
 
     # slicer.util.setSliceViewerLayers(foregroundOpacity=0.4)
-
-  def onLoadH5FileButton(self):
-    if not self.patchVolumeNode:
-      return
-
-    self.setupForLoadingPatchFromH5File()
-
-    self.h5FileLoaded = True
-
-    f = h5py.File(self.H5FilePathname, 'r')
-
-    self.groupNamesInH5 = []
-
-    for key in f.keys():
-        if isinstance(f[key], h5py.Group):
-          # node is a dataset
-          print("Group ", key)
-          self.groupNamesInH5.append(key)
-          self.h5DatasetOption.addItem(key)
-        elif isinstance(f[key], h5py.Dataset):
-          #self.groupNamesInH5.append(key)
-          print("Dataset ", key)
-
-    f.close()
-
-    self.h5DatasetOption.enabled = True
-
-
-
-
 
   def exit(self):
     """
@@ -1359,11 +1199,6 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
         slicer.util.pip_install("scikit-image")
 
     import skimage.transform
-
-    # try:
-    #     import h5py
-    # except ImportError:
-    #     slicer.util.pip_install("h5py")
 
     # try:
     #     import tensorflow
