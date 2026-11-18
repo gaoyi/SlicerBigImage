@@ -1,6 +1,7 @@
 import os
 import unittest
 import logging
+import uuid
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
@@ -37,7 +38,7 @@ class BigImageViewer(ScriptedLoadableModule):
     self.parent.contributors = ["Yi Gao (Shenzhen Univ.)"]  # TODO: replace with "Firstname Lastname (Organization)"
     # TODO: update with short description of the module and a link to online module documentation
     self.parent.helpText = """
-    BigImageViewer for viewing large image whose whole content is not able to be loaded into memory.
+    BigImageViewer links the um-resolution microscopic whole slide with the mm-resolution radiology volume. It can view and process large slides whose whole content is not able to be loaded into memory. If you find this extension helpful please cite this paper: X. Yu, B. Zhao, H. Huang, M. Tian, S. Zhang, H. Song, Z. Li, K. Huang, Y. Gao, "An Open Source Platform for Computational Histopathology," in IEEE Access, vol. 9, pp. 73651-73661, 2021
     """
     self.parent.acknowledgementText = """
     This file was developed by Yi Gao.
@@ -152,6 +153,11 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.patchWsiScaleY = 1.0
     self.showWholeSlideOnLoad = False
     self.initialMagnification = 1.0
+
+    self.activeBigImageNode = None
+    self._observedBigImagePlaneIDs = set()
+    self._updatingBigImagePlane = False
+    self.bigImagePreviewNodes = {}
 
 
     # Interator
@@ -368,6 +374,350 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
           slicer.mrmlScene.RemoveNode(displayNode)
     self.resetPatchNodeReferences()
 
+  def normalizeBigImagePath(self, path):
+    if not path:
+      return ""
+    return os.path.normcase(os.path.abspath(path))
+
+  def findBigImageNodeForPath(self, path):
+    normalized = self.normalizeBigImagePath(path)
+    if not normalized:
+      return None
+    for node in slicer.mrmlScene.GetNodesByClass("vtkMRMLBigImageNode"):
+      if self.normalizeBigImagePath(node.GetSourceURI()) == normalized:
+        return node
+    return None
+
+  def findBigImageNodeForPlane(self, planeID):
+    if not planeID:
+      return None
+    for node in slicer.mrmlScene.GetNodesByClass("vtkMRMLBigImageNode"):
+      if node.GetPosePlaneNodeID() == planeID:
+        return node
+    return None
+
+  def setupBigImageNode(self):
+    if not hasattr(slicer, "vtkMRMLBigImageNode"):
+      logging.warning("vtkMRMLBigImageNode is not available; WSI identity node was not created")
+      self.activeBigImageNode = None
+      return
+
+    node = self.findBigImageNodeForPath(self.BigRGBAImagePathname)
+    if node is None:
+      node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLBigImageNode")
+      if node is None:
+        logging.warning("Failed to create vtkMRMLBigImageNode")
+        self.activeBigImageNode = None
+        return
+      baseName = os.path.splitext(os.path.basename(self.BigRGBAImagePathname))[0]
+      node.SetName(slicer.mrmlScene.GenerateUniqueName(baseName or "BigImage"))
+      node.SetFrameUID(str(uuid.uuid4()))
+
+    self.activeBigImageNode = node
+    self.updateBigImageNodeMetadata(node)
+    self.setupBigImagePose(node)
+    self.createBigImagePreview(node)
+
+  def updateBigImageNodeMetadata(self, node):
+    if node is None:
+      return
+
+    width = int(self.WSISizesXAtAllLevels[0])
+    height = int(self.WSISizesYAtAllLevels[0])
+    mppX, mppY = self.slideInfo.get("mpp", (self.MPP, self.MPP))
+
+    node.SetSourceURI(os.path.abspath(self.BigRGBAImagePathname))
+    node.SetImageType("wsi")
+    node.SetAccessMode("lazy")
+    node.SetPixelType("uint8-rgb")
+    node.SetDimensions([width, height, 1])
+    node.SetMPP([float(mppX), float(mppY)])
+    node.SetSpacing([float(mppX)/1000.0, float(mppY)/1000.0, float(self.SliceThickness)])
+    node.SetMPPEstimated(bool(self.slideInfo.get("mppEstimated", False)))
+    node.SetLevelCount(int(self.BigRGBAImageNumberOfLevels))
+    node.SetChannelCount(3)
+    node.SetPyramid(self.BigRGBAImageNumberOfLevels > 1)
+
+  def getBigImagePosePlane(self, node):
+    if node is None:
+      return None
+
+    planeID = node.GetPosePlaneNodeID()
+    planeNode = slicer.mrmlScene.GetNodeByID(planeID) if planeID else None
+    if planeNode is not None and planeNode.GetClassName() != "vtkMRMLMarkupsPlaneNode":
+      planeNode = None
+
+    if planeNode is None:
+      baseName = node.GetName() or "BigImage"
+      planeNode = slicer.mrmlScene.AddNewNodeByClass(
+        "vtkMRMLMarkupsPlaneNode", slicer.mrmlScene.GenerateUniqueName(baseName + "_plane"))
+      if planeNode is None:
+        return None
+      node.SetPosePlaneNodeID(planeNode.GetID())
+      planeNode.CreateDefaultDisplayNodes()
+      planeNode.SetSizeMode(slicer.vtkMRMLMarkupsPlaneNode.SizeModeAbsolute)
+      planeNode.SetAxes([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0])
+      planeNode.SetOrigin(0.0, 0.0, 0.0)
+
+    displayNodeID = planeNode.GetDisplayNodeID()
+    displayNode = slicer.mrmlScene.GetNodeByID(displayNodeID) if displayNodeID else None
+    if displayNode is not None and hasattr(displayNode, "SetScaleHandleVisibility"):
+      displayNode.SetScaleHandleVisibility(False)
+      displayNode.SetTranslationHandleVisibility(True)
+      displayNode.SetRotationHandleVisibility(True)
+      displayNode.SetVisibility2D(False)
+      displayNode.SetFillVisibility(False)
+
+    return planeNode
+
+  def getBigImageTransformNode(self, node):
+    if node is None:
+      return None
+
+    transformID = node.GetTransformNodeID()
+    transformNode = slicer.mrmlScene.GetNodeByID(transformID) if transformID else None
+    if transformNode is None:
+      baseName = node.GetName() or "BigImage"
+      transformNode = slicer.mrmlScene.AddNewNodeByClass(
+        "vtkMRMLLinearTransformNode", slicer.mrmlScene.GenerateUniqueName(baseName + "_pose"))
+      if transformNode is None:
+        return None
+
+    node.SetAndObserveTransformNodeID(transformNode.GetID())
+    return transformNode
+
+  def setupBigImagePose(self, node):
+    if node is None:
+      return
+
+    dimensions = node.GetDimensions()
+    spacing = node.GetSpacing()
+    widthMm = dimensions[0] * spacing[0]
+    heightMm = dimensions[1] * spacing[1]
+    if widthMm <= 0 or heightMm <= 0:
+      return
+
+    planeNode = self.getBigImagePosePlane(node)
+    transformNode = self.getBigImageTransformNode(node)
+    if planeNode is None or transformNode is None:
+      return
+
+    self._updatingBigImagePlane = True
+    try:
+      planeNode.SetSizeMode(slicer.vtkMRMLMarkupsPlaneNode.SizeModeAbsolute)
+      width, height = planeNode.GetSize()
+      if abs(width - widthMm) > 1e-6 or abs(height - heightMm) > 1e-6:
+        planeNode.SetSize(widthMm, heightMm)
+      self.syncBigImageTransformToPlane(node, planeNode)
+    finally:
+      self._updatingBigImagePlane = False
+
+    self.observeBigImagePlane(planeNode)
+
+  def syncBigImageTransformToPlane(self, node, planeNode):
+    if node is None or planeNode is None:
+      return
+
+    transformID = node.GetTransformNodeID()
+    transformNode = slicer.mrmlScene.GetNodeByID(transformID) if transformID else None
+    if transformNode is None:
+      return
+
+    matrix = vtk.vtkMatrix4x4()
+    transformNode.GetMatrixTransformToWorld(matrix)
+
+    axes = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+    for column in range(3):
+      for row in range(3):
+        axes[column][row] = matrix.GetElement(row, column)
+      length = (axes[column][0]**2 + axes[column][1]**2 + axes[column][2]**2) ** 0.5
+      if length == 0:
+        return
+      for row in range(3):
+        axes[column][row] /= length
+
+    origin = [matrix.GetElement(0, 3), matrix.GetElement(1, 3), matrix.GetElement(2, 3)]
+    width, height = planeNode.GetSize()
+    center = [origin[i] + 0.5*width*axes[0][i] + 0.5*height*axes[1][i] for i in range(3)]
+
+    planeNode.SetAxesWorld(axes[0], axes[1], axes[2])
+    planeNode.SetOriginWorld(center)
+
+  def observeBigImagePlane(self, planeNode):
+    if planeNode is None:
+      return
+    planeID = planeNode.GetID()
+    if planeID in self._observedBigImagePlaneIDs:
+      return
+    self.addObserver(planeNode, vtk.vtkCommand.ModifiedEvent, self.onBigImagePosePlaneModified)
+    self._observedBigImagePlaneIDs.add(planeID)
+
+  def onBigImagePosePlaneModified(self, caller, event=None):
+    if self._updatingBigImagePlane:
+      return
+
+    node = self.findBigImageNodeForPlane(caller.GetID())
+    if node is None:
+      return
+
+    dimensions = node.GetDimensions()
+    spacing = node.GetSpacing()
+    widthMm = dimensions[0] * spacing[0]
+    heightMm = dimensions[1] * spacing[1]
+    if widthMm <= 0 or heightMm <= 0:
+      return
+
+    self._updatingBigImagePlane = True
+    try:
+      width, height = caller.GetSize()
+      if abs(width - widthMm) > 1e-6 or abs(height - heightMm) > 1e-6:
+        caller.SetSize(widthMm, heightMm)
+      self.syncBigImagePlaneToTransform(node, caller)
+    finally:
+      self._updatingBigImagePlane = False
+
+  def syncBigImagePlaneToTransform(self, node, planeNode):
+    if node is None or planeNode is None:
+      return
+
+    transformID = node.GetTransformNodeID()
+    transformNode = slicer.mrmlScene.GetNodeByID(transformID) if transformID else None
+    if transformNode is None:
+      return
+
+    xAxis = [0.0, 0.0, 0.0]
+    yAxis = [0.0, 0.0, 0.0]
+    zAxis = [0.0, 0.0, 0.0]
+    center = [0.0, 0.0, 0.0]
+    planeNode.GetAxesWorld(xAxis, yAxis, zAxis)
+    planeNode.GetOriginWorld(center)
+    width, height = planeNode.GetSize()
+
+    matrix = vtk.vtkMatrix4x4()
+    for i in range(3):
+      matrix.SetElement(i, 0, xAxis[i])
+      matrix.SetElement(i, 1, yAxis[i])
+      matrix.SetElement(i, 2, zAxis[i])
+      matrix.SetElement(i, 3, center[i] - 0.5*width*xAxis[i] - 0.5*height*yAxis[i])
+    transformNode.SetMatrixTransformToParent(matrix)
+
+  def removeBigImagePreview(self, nodeID=None):
+    if nodeID is None:
+      nodeIDs = list(self.bigImagePreviewNodes.keys())
+    else:
+      nodeIDs = [nodeID]
+
+    for currentID in nodeIDs:
+      modelNode, textureNode = self.bigImagePreviewNodes.pop(currentID, (None, None))
+      for node in (modelNode, textureNode):
+        if node is None:
+          continue
+        displayNode = node.GetDisplayNode()
+        displayNodeID = displayNode.GetID() if displayNode else None
+        slicer.mrmlScene.RemoveNode(node)
+        if displayNodeID:
+          displayNode = slicer.mrmlScene.GetNodeByID(displayNodeID)
+          if displayNode is not None:
+            slicer.mrmlScene.RemoveNode(displayNode)
+
+  def createBigImagePreview(self, node):
+    if node is None:
+      return
+
+    nodeID = node.GetID()
+    if nodeID in self.bigImagePreviewNodes:
+      return
+    self.removeBigImagePreview(nodeID)
+
+    sourceURI = node.GetSourceURI()
+    if not sourceURI or not os.path.isfile(sourceURI):
+      return
+
+    try:
+      slide = TiffSlide(sourceURI)
+      try:
+        thumbnail = slide.get_thumbnail((1024, 1024)).convert("RGB")
+      finally:
+        slide.close()
+    except Exception as exception:
+      logging.warning("Failed to read WSI thumbnail: %s", exception)
+      return
+
+    thumbnailArray = numpy.asarray(thumbnail)
+    textureNode = slicer.util.addVolumeFromArray(
+      numpy.expand_dims(thumbnailArray, axis=0),
+      name=slicer.mrmlScene.GenerateUniqueName(node.GetName() + "_thumbnail"),
+      nodeClassName="vtkMRMLVectorVolumeNode")
+    if textureNode is None:
+      return
+    textureNode.SetHideFromEditors(True)
+    textureNode.SetSaveWithScene(False)
+    textureDisplayNode = textureNode.GetDisplayNode()
+    if textureDisplayNode is not None:
+      textureDisplayNode.SetHideFromEditors(True)
+      textureDisplayNode.SetSaveWithScene(False)
+      textureDisplayNode.SetVisibility(False)
+
+    dimensions = node.GetDimensions()
+    spacing = node.GetSpacing()
+    width = dimensions[0] * spacing[0]
+    height = dimensions[1] * spacing[1]
+
+    points = vtk.vtkPoints()
+    points.InsertNextPoint(0.0, 0.0, -0.001)
+    points.InsertNextPoint(width, 0.0, -0.001)
+    points.InsertNextPoint(width, height, -0.001)
+    points.InsertNextPoint(0.0, height, -0.001)
+
+    polygons = vtk.vtkCellArray()
+    polygons.InsertNextCell(3)
+    polygons.InsertCellPoint(0)
+    polygons.InsertCellPoint(1)
+    polygons.InsertCellPoint(2)
+    polygons.InsertNextCell(3)
+    polygons.InsertCellPoint(0)
+    polygons.InsertCellPoint(2)
+    polygons.InsertCellPoint(3)
+
+    textureCoordinates = vtk.vtkFloatArray()
+    textureCoordinates.SetName("Texture Coordinates")
+    textureCoordinates.SetNumberOfComponents(2)
+    textureCoordinates.InsertNextTuple2(0.0, 1.0)
+    textureCoordinates.InsertNextTuple2(1.0, 1.0)
+    textureCoordinates.InsertNextTuple2(1.0, 0.0)
+    textureCoordinates.InsertNextTuple2(0.0, 0.0)
+
+    polyData = vtk.vtkPolyData()
+    polyData.SetPoints(points)
+    polyData.SetPolys(polygons)
+    polyData.GetPointData().SetTCoords(textureCoordinates)
+
+    modelNode = slicer.mrmlScene.AddNewNodeByClass(
+      "vtkMRMLModelNode", slicer.mrmlScene.GenerateUniqueName(node.GetName() + "_preview"))
+    if modelNode is None:
+      slicer.mrmlScene.RemoveNode(textureNode)
+      return
+    modelNode.SetAndObservePolyData(polyData)
+    modelNode.SetHideFromEditors(True)
+    modelNode.SetSaveWithScene(False)
+    modelNode.CreateDefaultDisplayNodes()
+
+    modelDisplayNode = modelNode.GetDisplayNode()
+    if modelDisplayNode is not None:
+      modelDisplayNode.SetTextureImageDataConnection(textureNode.GetImageDataConnection())
+      modelDisplayNode.SetLighting(False)
+      modelDisplayNode.SetAmbient(1.0)
+      modelDisplayNode.SetDiffuse(0.0)
+      modelDisplayNode.SetSpecular(0.0)
+      modelDisplayNode.SetInterpolateTexture(True)
+      modelDisplayNode.SetVisibility2D(False)
+
+    transformID = node.GetTransformNodeID()
+    if transformID:
+      modelNode.SetAndObserveTransformNodeID(transformID)
+
+    self.bigImagePreviewNodes[nodeID] = (modelNode, textureNode)
+
 
 
 
@@ -418,6 +768,7 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # These connections ensure that we update parameter node when scene is closed
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
 
     # # These connections ensure that whenever user changes some settings on the GUI, that is saved in the MRML scene
     # # (in the selected parameter node).
@@ -541,7 +892,10 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     """
     Called when the application closes and the module widget is destroyed.
     """
+    self.removeBigImagePreview()
     self.removeObservers()
+    self.activeBigImageNode = None
+    self._observedBigImagePlaneIDs.clear()
 
   def enter(self):
     """
@@ -549,6 +903,12 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     """
     # Make sure parameter node exists and observed
     self.initializeParameterNode()
+    self.restoreBigImagePlanes()
+
+  def restoreBigImagePlanes(self):
+    for node in slicer.mrmlScene.GetNodesByClass("vtkMRMLBigImageNode"):
+      self.setupBigImagePose(node)
+      self.createBigImagePreview(node)
 
 
 
@@ -916,6 +1276,7 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.removePatchNodes()
     self.getMetaInfoFromWSI()
     self.determinPatchSizeByViewerSize()
+    self.setupBigImageNode()
 
     self.setupVolumeNodeToStoreRGBPatch()
     self.setupForScalarPatch()
@@ -1043,6 +1404,9 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # Parameter node will be reset, do not use it anymore
     self.setParameterNode(None)
     self.resetPatchNodeReferences()
+    self.activeBigImageNode = None
+    self._observedBigImagePlaneIDs.clear()
+    self.bigImagePreviewNodes.clear()
 
   def onSceneEndClose(self, caller, event):
     """
@@ -1051,6 +1415,9 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # If this module is shown while the scene is closed then recreate a new parameter node immediately
     if self.parent.isEntered:
       self.initializeParameterNode()
+
+  def onSceneEndImport(self, caller, event):
+    self.restoreBigImagePlanes()
 
   def initializeParameterNode(self):
     """
@@ -1227,19 +1594,26 @@ class BigImageViewerLogic(ScriptedLoadableModuleLogic):
     # --------------------------
     # 修复：正确获取 MPP
     # --------------------------
+    mppEstimated = False
     try:
         # 方式 1：新版 tiffslide
         mpp_x = slide.properties.get("tiffslide.mpp-x", None)
         mpp_y = slide.properties.get("tiffslide.mpp-y", None)
         if mpp_x is None:
             # 方式 2：从 OpenSlide 兼容属性读取
-            mpp_x = slide.properties.get("openslide.mpp-x", 0.5)
-            mpp_y = slide.properties.get("openslide.mpp-y", 0.5)
+            mpp_x = slide.properties.get("openslide.mpp-x", None)
+            mpp_y = slide.properties.get("openslide.mpp-y", None)
+        if mpp_x is None or mpp_y is None:
+            mpp_x = 0.5
+            mpp_y = 0.5
+            mppEstimated = True
     except:
         mpp_x = 0.5
         mpp_y = 0.5
+        mppEstimated = True
 
     info["mpp"] = (float(mpp_x), float(mpp_y))
+    info["mppEstimated"] = mppEstimated
 
     # 放大倍数
     info["objectiveMagnification"] = 20.0

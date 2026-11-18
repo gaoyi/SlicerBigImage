@@ -20,6 +20,7 @@ include(${Slicer_USE_FILE})
 #-----------------------------------------------------------------------------
 # Extension modules
 add_subdirectory(BigImageViewer)
+add_subdirectory(BigImageCore)
 add_subdirectory(ColorDecomposition)
 add_subdirectory(NgffImageIO)
 add_subdirectory(NucleusSegmentation)
