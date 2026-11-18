@@ -364,7 +364,7 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       if sh is not None:
         itemID = sh.GetItemByDataNode(node)
         if itemID:
-          sh.RemoveItem(itemID)
+          sh.RemoveItem(itemID, False, False)
       displayNode = node.GetDisplayNode()
       displayNodeID = displayNode.GetID() if displayNode else None
       slicer.mrmlScene.RemoveNode(node)
@@ -857,7 +857,7 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     volumeNode = slicer.vtkMRMLVectorVolumeNode()
     volumeNode.SetName(self.getPatchNodeName("patch_rgb"))
     volumeNode.SetSaveWithScene(False)
-    volumeNode.SetHideFromEditors(True)
+    volumeNode.SetHideFromEditors(False)
     volumeNode.SetSpacing(imageSpacing)
     volumeNode.SetIJKToRASDirectionMatrix(IJKToRASDirectionMatrix)
     volumeNode.SetAndObserveImageData(imageData)
@@ -866,11 +866,20 @@ class BigImageViewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     # Add volume to scene
     displayNode = slicer.vtkMRMLVectorVolumeDisplayNode()
     displayNode.SetSaveWithScene(False)
+    displayNode.SetHideFromEditors(False)
     slicer.mrmlScene.AddNode(displayNode)
 
     colorNode = slicer.util.getNode('Grey')
     displayNode.SetAndObserveColorNodeID(colorNode.GetID())
     volumeNode.SetAndObserveDisplayNodeID(displayNode.GetID())
+
+    # Keep the RGB patch selectable in volume selectors, but do not add it
+    # to the Subject Hierarchy / saved scene.
+    sh = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+    if sh is not None:
+      itemID = sh.GetItemByDataNode(volumeNode)
+      if itemID:
+        sh.RemoveItem(itemID, False, False)
 
     # store the loaded patch to widget member
     self.patchVolumeNode = volumeNode
